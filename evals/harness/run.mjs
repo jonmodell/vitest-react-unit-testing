@@ -73,6 +73,11 @@ const PRODUCERS = {
 // get the methodology — the eval measures the SKILL, so every provider must receive it.
 function buildPrompt(c) {
   const skill = fs.readFileSync(SKILL_MD, "utf8");
+  // Decline (right-layer) cases must NOT be coerced into writing a file — that would defeat the very
+  // judgment being measured. Present the task and let the skill decide (it should decline + defer to e2e).
+  if (c.expectDecline) {
+    return `${skill}\n\n----- TASK -----\n${c.prompt} Work in the current directory. Do not modify the fixture, then stop.`;
+  }
   return `${skill}\n\n----- TASK -----\n${c.prompt} Write the test file in the current directory. Do not modify the fixture, then stop.`;
 }
 
@@ -141,6 +146,16 @@ function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
   }
 
   const testFile = producedTestIn(dir);
+
+  // Right-layer (decline) case: success is DECLINING — producing NO test and deferring to e2e/RTL.
+  // The producer ran (we got an answer), so produced:true either way; only the verdict flips.
+  if (c.expectDecline) {
+    if (testFile) {
+      return { id, pass: false, produced: true, reasons: [`force-fit a unit test onto an e2e-only target (produced ${testFile}) — this belongs in RTL/e2e, not a unit test`] };
+    }
+    return { id, pass: true, produced: true, reasons: [] };
+  }
+
   if (!testFile) return { id, pass: false, produced: false, reasons: ["no *.test.ts was produced"] };
 
   const src = fs.readFileSync(path.join(dir, testFile), "utf8");
@@ -205,8 +220,17 @@ function main() {
   const results = [];
   let failed = 0;
   for (const id of ids) {
+    const c = CASES[id];
+    // Decline (right-layer) cases only have meaning under --agent — there's no candidate/golden to
+    // grade. Skip them in golden/candidate/dry modes so they don't register as "candidate not found".
+    if (c.expectDecline && !agent) {
+      const r = { unit: c.unit, id, skip: "right-layer decline case — runs under --agent only" };
+      results.push(r);
+      console.log(`  •  ${id}  SKIP — ${r.skip}`);
+      continue;
+    }
     const cand = goldenDir ? path.join(goldenDir, `${id}.test.ts`) : candidate;
-    const r = { unit: CASES[id].unit, ...gradeCase(id, CASES[id], { candidate: cand, agent, model, provider, producer }) };
+    const r = { unit: c.unit, ...gradeCase(id, c, { candidate: cand, agent, model, provider, producer }) };
     results.push(r);
     if (r.skip) console.log(`  •  ${id}  SKIP — ${r.skip}`);
     else if (r.pass) console.log(`  ✓  ${id}  PASS`);
