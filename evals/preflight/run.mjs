@@ -33,11 +33,13 @@ const SCENARIOS = [
     excludes: ["requirements NOT met"],
   },
   {
-    name: "component reqs unmet (react/jsdom/RTL missing)",
+    // The sandbox now carries the component stack (for the hook case 09), so --component passes here.
+    name: "component reqs met (sandbox has react/jsdom/RTL)",
     dir: SANDBOX,
     args: ["--component"],
-    exit: 1,
-    includes: ["react / react-dom not installed", "jsdom not installed", "requirements NOT met", "i -D react react-dom"],
+    exit: 0,
+    includes: ["react", "jsdom", "@testing-library/react", "requirements met"],
+    excludes: ["requirements NOT met"],
   },
   {
     name: "vitest missing (npm)",
@@ -45,6 +47,14 @@ const SCENARIOS = [
     args: [],
     exit: 1,
     includes: ["vitest not installed", "npm i -D vitest", "requirements NOT met"],
+  },
+  {
+    // A project without the component stack: --component reports the react/jsdom fixes.
+    name: "component reqs unmet (no react/jsdom)",
+    dir: path.join(FIX, "missing-vitest"),
+    args: ["--component"],
+    exit: 1,
+    includes: ["react / react-dom not installed", "jsdom not installed", "i -D react react-dom"],
   },
   {
     name: "vitest missing (pnpm) — package-manager detection",

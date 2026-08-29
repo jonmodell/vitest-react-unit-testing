@@ -21,7 +21,10 @@ A produced test passes a case when its guarded failure mode is absent, every loa
 - **Runs green** on the correct fixture: `vitest run <file>` (pinned `TZ=UTC`).
 - **Goes red on every mutant** in `mutants/NN/` — proof the assertions could actually fail (rubric R2, mechanized).
 - **Auto-checks**: no leftover `.only`/`.skip`; mocks the boundary, not the unit; per-case `requires`/`forbids` patterns.
-The judgment-only rubric rows (right layer, behavior-over-implementation) still want a human or LLM-judge.
+Two special cases extend the set: **08 (right-layer decline)** — an e2e-only fixture where the correct
+output is *no* test (rubric R1, agent-mode only, no golden/mutants); and **09 (custom hook)** — a
+`renderHook` case under a per-file jsdom docblock. R6 has a partial mechanical floor (snapshot forbids);
+subtle right-layer/behavior-over-implementation nuance still wants a human or LLM-judge.
 
 ## Running it
 The harness is built — run it from a project that has Vitest installed (or `evals/harness/sandbox`):

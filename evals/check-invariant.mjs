@@ -34,12 +34,20 @@ function checkCase(id) {
   if (md.length === 0) problems.push(`no evals/cases/${id}-*.md`);
   else if (md.length > 1) problems.push(`multiple case docs for ${id}: ${md.join(", ")}`);
 
-  if (!fs.existsSync(path.join(GOLDEN_DIR, `${id}.test.ts`))) problems.push(`no evals/golden/${id}.test.ts`);
-
   const fixtures = fixturesFor(c);
   for (const f of fixtures) {
     if (!fs.existsSync(path.join(FIXTURES_DIR, f))) problems.push(`fixture missing: evals/fixtures/${f}`);
   }
+
+  // Decline (right-layer) cases legitimately have NO golden and NO mutants — success is producing no
+  // test, and there's nothing to mutate. They still need a case doc + fixture (checked above).
+  if (c.expectDecline) {
+    if (fs.existsSync(path.join(GOLDEN_DIR, `${id}.test.ts`))) problems.push(`decline case ${id} should have NO golden`);
+    if (isDir(path.join(MUTANTS_DIR, id))) problems.push(`decline case ${id} should have NO mutants dir`);
+    return problems;
+  }
+
+  if (!fs.existsSync(path.join(GOLDEN_DIR, `${id}.test.ts`))) problems.push(`no evals/golden/${id}.test.ts`);
 
   const mDir = path.join(MUTANTS_DIR, id);
   if (!isDir(mDir)) {

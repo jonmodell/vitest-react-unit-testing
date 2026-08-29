@@ -6,10 +6,21 @@ const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt
 // Writes report.json (machine-readable) + report.html (open in a browser) into outDir.
 export function writeReports(outDir, meta, results) {
   fs.mkdirSync(outDir, { recursive: true });
-  const passed = results.filter((r) => r.pass).length;
-  const failed = results.filter((r) => !r.pass && !r.skip).length;
-  const skipped = results.filter((r) => r.skip).length;
-  const doc = { ...meta, summary: { passed, failed, skipped, total: results.length }, results };
+  const agg = results.some((r) => typeof r.runs === "number"); // K-run aggregate
+  let summary;
+  if (agg) {
+    // Run-level counts: passed = total case-passes across all K runs, total = cases × K.
+    const graded = results.filter((r) => typeof r.runs === "number");
+    const passed = graded.reduce((n, r) => n + r.passes, 0);
+    const total = graded.reduce((n, r) => n + r.runs, 0);
+    summary = { passed, failed: total - passed, skipped: 0, total, cases: results.length };
+  } else {
+    const passed = results.filter((r) => r.pass).length;
+    const failed = results.filter((r) => !r.pass && !r.skip).length;
+    const skipped = results.filter((r) => r.skip).length;
+    summary = { passed, failed, skipped, total: results.length };
+  }
+  const doc = { ...meta, summary, results };
 
   const jsonPath = path.join(outDir, "report.json");
   const htmlPath = path.join(outDir, "report.html");
@@ -19,19 +30,26 @@ export function writeReports(outDir, meta, results) {
 }
 
 function renderHtml(doc) {
-  const rows = doc.results
-    .map((r) => {
-      const state = r.skip ? "skip" : r.pass ? "pass" : "fail";
-      const detail = r.skip
-        ? esc(r.skip)
-        : r.reasons && r.reasons.length
-          ? `<pre>${esc(r.reasons.join("\n"))}</pre>`
-          : "&mdash;";
-      return `<tr class="${state}"><td class="id">${esc(r.id)}</td><td>${esc(r.unit ?? "")}</td><td class="badge">${state.toUpperCase()}</td><td class="detail">${detail}</td></tr>`;
-    })
-    .join("\n");
+  const agg = doc.repeat > 1;
+  const detailCell = (r) =>
+    r.reasons && r.reasons.length ? `<pre>${esc(r.reasons.join("\n"))}</pre>` : "&mdash;";
+  const rows = agg
+    ? doc.results
+        .map((r) => {
+          const state = r.passes === r.runs ? "pass" : r.passes === 0 ? "fail" : "part";
+          const strip = (r.perRun ?? []).map((x) => `<span class="${x.pass ? "ok" : "no"}">${x.pass ? "✓" : "✗"}</span>`).join("");
+          return `<tr class="${state}"><td class="id">${esc(r.id)}</td><td>${esc(r.unit ?? "")}</td><td class="badge">${r.passes}/${r.runs}</td><td class="strip">${strip}</td><td class="detail">${detailCell(r)}</td></tr>`;
+        })
+        .join("\n")
+    : doc.results
+        .map((r) => {
+          const state = r.skip ? "skip" : r.pass ? "pass" : "fail";
+          const detail = r.skip ? esc(r.skip) : detailCell(r);
+          return `<tr class="${state}"><td class="id">${esc(r.id)}</td><td>${esc(r.unit ?? "")}</td><td class="badge">${state.toUpperCase()}</td><td class="detail">${detail}</td></tr>`;
+        })
+        .join("\n");
   const s = doc.summary;
-  const metaBits = [`${doc.mode} mode`];
+  const metaBits = [`${doc.mode}${agg ? `×${doc.repeat}` : ""} mode`];
   if (doc.provider && doc.model) metaBits.push(`${doc.provider} · ${doc.model}`);
   else if (doc.model) metaBits.push(doc.model);
   if (doc.producerVersion) metaBits.push(doc.producerVersion);
@@ -48,6 +66,8 @@ h1{font-size:18px;margin:0 0 4px}.meta{color:var(--muted);font-size:13px;margin-
 .pills{display:flex;gap:8px;margin:0 0 20px;flex-wrap:wrap}
 .pill{padding:4px 12px;border-radius:999px;font-weight:600;font-size:13px;border:1px solid var(--line)}
 .pill.p{color:var(--pass)}.pill.f{color:var(--fail)}.pill.s{color:var(--skip)}
+tr.part .badge{color:var(--skip)}
+.strip{font-variant-numeric:tabular-nums;letter-spacing:2px}.strip .ok{color:var(--pass)}.strip .no{color:var(--fail)}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
 th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
@@ -57,8 +77,8 @@ tr:last-child td{border-bottom:none}.id{font-variant-numeric:tabular-nums;font-w
 </style></head><body>
 <h1>vitest-react-unit-testing &mdash; eval report</h1>
 <div class="meta">${metaLine}${runLink}</div>
-<div class="pills"><span class="pill p">${s.passed} passed</span><span class="pill f">${s.failed} failed</span>${s.skipped ? `<span class="pill s">${s.skipped} skipped</span>` : ""}<span class="pill">${s.total} total</span></div>
-<table><thead><tr><th>Case</th><th>Focus</th><th>Result</th><th>Detail</th></tr></thead><tbody>
+<div class="pills"><span class="pill p">${s.passed} passed</span><span class="pill f">${s.failed} failed</span>${s.skipped ? `<span class="pill s">${s.skipped} skipped</span>` : ""}<span class="pill">${s.total} ${agg ? `runs (${s.cases}×${doc.repeat})` : "total"}</span></div>
+<table><thead><tr><th>Case</th><th>Focus</th><th>${agg ? "Consistency" : "Result"}</th>${agg ? "<th>Runs</th>" : ""}<th>Detail</th></tr></thead><tbody>
 ${rows}
 </tbody></table></body></html>`;
 }

@@ -29,7 +29,7 @@ evals/
     cases.mjs                # machine-readable case registry (fixture + prompt + requires/forbids regexes)
     grade.mjs                # runVitest (green, TZ=UTC) + checkGreps + checkMutants (red-on-broken)
     report.mjs               # writes report.json + standalone report.html (records provider·model·version)
-    sandbox/                 # throwaway Vitest project the grader runs in when there's no host project (CI)
+    sandbox/                 # throwaway Vitest project the grader runs in (CI); has react/jsdom for the hook case (09)
 .github/workflows/           # grader.yml (free, PRs) + model-eval.yml (dispatch-only, you-only)
 ```
 
@@ -41,7 +41,9 @@ harness/docs drift. When you add a mutant, run `--golden` — every golden must 
 all-green), which is what proves the mutant is a real, must-catch behavior and not noise.
 **`evals/check-invariant.mjs` enforces this mechanically** (a free CI step): it fails on any case missing
 one of the six artifacts, on a mutant that doesn't replace a real fixture, or on an orphan (a golden/
-mutant/case-doc with no `CASES` entry). Run it after any case change.
+mutant/case-doc with no `CASES` entry). Run it after any case change. **Exception:** a case marked
+`expectDecline: true` in `cases.mjs` (rubric R1, e.g. 08) legitimately has **no golden and no mutants**
+(the correct output is *no* test) — the checker requires it to have neither, and only a case doc + fixture.
 
 ## Running the harness (verification)
 Run **from a project that has Vitest installed** (the harness borrows its vitest) — locally use
@@ -50,6 +52,8 @@ Run **from a project that has Vitest installed** (the harness borrows its vitest
 - `--golden evals/golden` — grade the golden tests (the free CI gate; must stay all-green)
 - `--case NN --candidate <file>` — grade one test (deterministic, free)
 - `--agent --provider claude|openai|gemini|copilot [--model X]` — produce+grade with a real model (costs)
+- `--agent … --repeat K` — K-run consistency (agent only): generate+grade each case K times, report
+  per-case `passes/K` (mode `agent×K`). Measures the nondeterministic generation step.
 - `--producer '<cmd with {prompt}/{model}/{dir}>'` — any other CLI/SDK
 Reports land in `./eval-report/` (`report.json` + `report.html`). **Verified provider:** `copilot`
 = `copilot --allow-all [--model auto|gpt-5.4|…] -p "<prompt>"`.

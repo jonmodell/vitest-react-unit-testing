@@ -43,6 +43,7 @@ function parseArgs() {
     provider: val("--provider"),
     producer: val("--producer"),
     golden: val("--golden"),
+    repeat: val("--repeat"),
   };
 }
 
@@ -73,6 +74,11 @@ const PRODUCERS = {
 // get the methodology — the eval measures the SKILL, so every provider must receive it.
 function buildPrompt(c) {
   const skill = fs.readFileSync(SKILL_MD, "utf8");
+  // Decline (right-layer) cases must NOT be coerced into writing a file — that would defeat the very
+  // judgment being measured. Present the task and let the skill decide (it should decline + defer to e2e).
+  if (c.expectDecline) {
+    return `${skill}\n\n----- TASK -----\n${c.prompt} Work in the current directory. Do not modify the fixture, then stop.`;
+  }
   return `${skill}\n\n----- TASK -----\n${c.prompt} Write the test file in the current directory. Do not modify the fixture, then stop.`;
 }
 
@@ -141,6 +147,16 @@ function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
   }
 
   const testFile = producedTestIn(dir);
+
+  // Right-layer (decline) case: success is DECLINING — producing NO test and deferring to e2e/RTL.
+  // The producer ran (we got an answer), so produced:true either way; only the verdict flips.
+  if (c.expectDecline) {
+    if (testFile) {
+      return { id, pass: false, produced: true, reasons: [`force-fit a unit test onto an e2e-only target (produced ${testFile}) — this belongs in RTL/e2e, not a unit test`] };
+    }
+    return { id, pass: true, produced: true, reasons: [] };
+  }
+
   if (!testFile) return { id, pass: false, produced: false, reasons: ["no *.test.ts was produced"] };
 
   const src = fs.readFileSync(path.join(dir, testFile), "utf8");
@@ -159,7 +175,7 @@ function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
 }
 
 function main() {
-  const { list, agent, caseId, candidate, out, model, provider, producer, golden } = parseArgs();
+  const { list, agent, caseId, candidate, out, model, provider, producer, golden, repeat } = parseArgs();
 
   if (list) {
     for (const [id, c] of Object.entries(CASES)) console.log(`  ${id}  ${c.unit}`);
@@ -179,6 +195,9 @@ function main() {
   const goldenDir = golden ? path.resolve(golden) : null;
   const mode = candidate ? "grader" : goldenDir ? "golden" : agent ? "agent" : "dry";
   const prov = agent ? (provider ?? (producer ? "custom" : "claude")) : null;
+  // K-run consistency: generation is the nondeterministic step, so --repeat K only makes sense in agent
+  // mode (golden/candidate are deterministic). Clamp to [1,20]. K>1 aggregates per-case pass rate.
+  const runs = agent ? Math.min(20, Math.max(1, parseInt(repeat ?? "1", 10) || 1)) : 1;
   // CI provenance — present only under GitHub Actions; flows into report.json via the {...meta} spread
   // so every published run is self-identifying and links back to the Actions run that produced it.
   const env = process.env;
@@ -198,15 +217,49 @@ function main() {
     provider: prov,
     model: agent ? (model ?? "cli-default") : (model ?? null),
     producerVersion: agent ? producerVersion(provider ?? "claude", producer) : null,
+    ...(runs > 1 ? { repeat: runs } : {}),
     ...ci,
   };
 
-  console.log(`\nvitest-react-unit-testing evals  (${mode} mode${prov ? `, ${prov} ${meta.model}` : ""})\n`);
+  console.log(`\nvitest-react-unit-testing evals  (${mode} mode${runs > 1 ? `×${runs}` : ""}${prov ? `, ${prov} ${meta.model}` : ""})\n`);
   const results = [];
   let failed = 0;
   for (const id of ids) {
+    const c = CASES[id];
+    // Decline (right-layer) cases only have meaning under --agent — there's no candidate/golden to
+    // grade. Skip them in golden/candidate/dry modes so they don't register as "candidate not found".
+    if (c.expectDecline && !agent) {
+      const r = { unit: c.unit, id, skip: "right-layer decline case — runs under --agent only" };
+      results.push(r);
+      console.log(`  •  ${id}  SKIP — ${r.skip}`);
+      continue;
+    }
     const cand = goldenDir ? path.join(goldenDir, `${id}.test.ts`) : candidate;
-    const r = { unit: CASES[id].unit, ...gradeCase(id, CASES[id], { candidate: cand, agent, model, provider, producer }) };
+
+    if (runs > 1) {
+      // Generate + grade the case K times; report per-case consistency (passes/K).
+      const perRun = [];
+      for (let i = 0; i < runs; i++) perRun.push(gradeCase(id, c, { candidate: cand, agent, model, provider, producer }));
+      const passes = perRun.filter((x) => x.pass).length;
+      const reasons = [...new Set(perRun.flatMap((x) => x.reasons ?? []))].slice(0, 6);
+      const r = {
+        unit: c.unit,
+        id,
+        runs,
+        passes,
+        passRate: passes / runs,
+        produced: perRun.some((x) => x.produced !== false),
+        perRun: perRun.map((x) => ({ pass: !!x.pass, produced: x.produced !== false })),
+        reasons,
+      };
+      results.push(r);
+      const ok = passes === runs;
+      if (!ok) failed++;
+      console.log(`  ${ok ? "✓" : "✗"}  ${id}  ${passes}/${runs}`);
+      continue;
+    }
+
+    const r = { unit: c.unit, ...gradeCase(id, c, { candidate: cand, agent, model, provider, producer }) };
     results.push(r);
     if (r.skip) console.log(`  •  ${id}  SKIP — ${r.skip}`);
     else if (r.pass) console.log(`  ✓  ${id}  PASS`);
