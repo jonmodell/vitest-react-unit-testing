@@ -11,17 +11,22 @@
 //
 // Grader mode (--candidate) is deterministic and free. Agent mode (--agent) spawns a fresh
 // headless agent per case to write the test, then grades it — that costs tokens.
+//
+// Grading each test has two halves: it must run GREEN on the correct fixture, and it must run RED
+// on every buggy fixture in evals/mutants/<id>/ (a "surviving" mutant means the test asserts too
+// little to catch that regression). Both must hold for a case to pass.
 
 import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CASES } from "./cases.mjs";
-import { runVitest, checkGreps } from "./grade.mjs";
+import { runVitest, checkGreps, checkMutants } from "./grade.mjs";
 import { writeReports } from "./report.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(__dirname, "..", "fixtures");
+const MUTANTS = path.join(__dirname, "..", "mutants");
 const REPO = process.cwd();
 const TMP = path.join(REPO, ".evals-tmp");
 
@@ -140,7 +145,14 @@ function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
   const reasons = checkGreps(src, c);
   const rel = path.relative(REPO, path.join(dir, testFile));
   const { green, output } = runVitest(REPO, rel);
-  if (!green) reasons.push("vitest run FAILED:\n      " + output.trim().split("\n").slice(-10).join("\n      "));
+  if (!green) {
+    reasons.push("vitest run FAILED:\n      " + output.trim().split("\n").slice(-10).join("\n      "));
+  } else {
+    // Test passes on correct code — now confirm it FAILS on each buggy fixture (rubric R2).
+    for (const s of checkMutants(MUTANTS, id, REPO, dir, rel)) {
+      reasons.push(`mutant survived (test stayed green on broken code): ${s}`);
+    }
+  }
   return { id, pass: green && reasons.length === 0, reasons };
 }
 
@@ -169,7 +181,7 @@ function main() {
     mode,
     ranAt: new Date().toISOString(),
     provider: prov,
-    model: agent ? (model ?? (prov === "github" ? "openai/gpt-4o" : "cli-default")) : (model ?? null),
+    model: agent ? (model ?? "cli-default") : (model ?? null),
     producerVersion: agent ? producerVersion(provider ?? "claude", producer) : null,
   };
 

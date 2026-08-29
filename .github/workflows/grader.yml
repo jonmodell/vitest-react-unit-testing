@@ -31,6 +31,9 @@ jobs:
         working-directory: evals/harness/sandbox
         run: npm install --no-audit --no-fund
 
+      - name: Preflight gate eval
+        run: node evals/preflight/run.mjs
+
       - name: Grade golden tests
         working-directory: evals/harness/sandbox
         run: node ../run.mjs --golden ../../golden --out ./eval-report

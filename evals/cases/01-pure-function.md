@@ -9,3 +9,5 @@
 **Pass criteria:** rubric R1, R2, R3, R6, R7. Auto-checks: `vitest run` green; no `.only`/`.skip`; **must NOT `vi.mock` `priority`** (`! grep -n "vi.mock.*priority" <file>`).
 
 **Failure mode guarded:** mocking away / not exercising the real unit under test.
+
+**Mutants (test must go red):** `critical-not-first` (precedence broken); `fallthrough-normal` (empty → `normal`, not `low`).

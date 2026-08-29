@@ -5,7 +5,7 @@ The skill's **success definition**, as gradeable criteria. Each case names which
 | # | Criterion | Pass looks like |
 |---|---|---|
 | R1 | **Right layer** | Pure logic/hook → Vitest unit; small component → RTL; anything needing a real browser/backend/heavy grid → *declined and deferred to e2e*, not force-fit into a unit test. |
-| R2 | **Failed first, for the right reason** | The agent ran the test and saw it fail (or deliberately broke the assertion to confirm), before making it pass — not a test that never could have failed. |
+| R2 | **Failed first, for the right reason** | The agent ran the test and saw it fail (or deliberately broke the assertion to confirm), before making it pass — not a test that never could have failed. *Mechanized in the harness by the mutant check: the test must go red on each buggy fixture in `evals/mutants/<id>/`.* |
 | R3 | **Runs green** | `vitest run <file>` passes. |
 | R4 | **Deterministic** | No real clock (fake timers when time matters), no network/DB/filesystem, TZ-independent, no ordering assumptions. |
 | R5 | **Mocks the boundary, not the unit** | The edge (client/clock/license) is mocked; the function under test is not. Behavior/output asserted — or, at a true boundary, the right builder calls asserted. |

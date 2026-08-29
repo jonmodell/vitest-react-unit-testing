@@ -9,3 +9,5 @@
 **Pass criteria:** rubric R1, R2, R3, R7. Auto-checks: `vitest.config.*` exists; a `test` script exists; `vitest run` exits 0.
 
 **Failure mode guarded:** writing a test with no runner wired up, or declaring done without a working `test` command.
+
+**Mutants (test must go red):** `fallthrough-normal` (empty → `normal`, not `low`).

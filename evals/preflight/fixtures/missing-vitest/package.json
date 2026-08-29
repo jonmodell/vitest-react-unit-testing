@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "name": "missing-vitest",
+  "description": "Preflight fixture: a Node project with NO vitest installed (npm). Preflight must fail (exit 1) and print the npm install fix."
+}

@@ -9,3 +9,5 @@
 **Pass criteria:** rubric R3, R5, R6. Auto-checks: `vitest run` green; client is mocked; token is built by hand (`! grep -nE "jsonwebtoken|jose|sign\(" <file>`).
 
 **Failure mode guarded:** trying to sign JWTs, hitting a real client, or writing tests that imply signature verification the code doesn't do.
+
+**Mutants (test must go red):** `manager-rejected` (role gate drops `manager`, so a valid manager is forbidden).

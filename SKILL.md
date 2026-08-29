@@ -7,6 +7,45 @@ description: Write and maintain deterministic unit and component tests with Vite
 
 Guidance for an AI agent adding fast, deterministic unit/component tests with **Vitest + React Testing Library** in a TypeScript / React (incl. Next.js) project. Browser flows, auth-gated screens, multi-page journeys, and heavy data grids belong in **end-to-end tests (Playwright)** and are out of scope here.
 
+## Prerequisites & tools
+**Preflight — do this before writing anything.** Detect what the project already has instead of assuming:
+- **Package manager** — match the repo's lockfile (`package-lock.json`→npm, `pnpm-lock.yaml`→pnpm, `yarn.lock`→yarn, `bun.lockb`→bun). Never introduce a second one.
+- **Existing runner** — is there a `vitest.config.*` and a `test` script? If yes, adopt its config/aliases and just add tests. Only bootstrap (below) when there is none.
+- **Node version** — check `.nvmrc`/`engines`; some deps pin a Node floor (see the matrix). If `node -v` is below it, pin the last compatible dep minor rather than upgrading Node.
+- **TS module setup** — if the project is not `"type": "module"`, the Vitest config must be `vitest.config.mts` (ESM-only plugins break otherwise).
+
+**Known-good version matrix** (guidance — adjust to the project's era; exact pins & why in `references/vitest-setup.md`):
+
+| Package | Version | Note |
+|---|---|---|
+| Node | 18 / 20 / 22 LTS | Vitest 2 needs ≥18; `@testing-library/jest-dom` ≥6.10 needs ≥22 (on Node 20 pin `6.9.1`) |
+| `vitest` + `@vitest/coverage-v8` | 2.x (≥1.6 works) | keep the two on the **same** version or coverage errors |
+| `react` + `react-dom` | 18 or 19 | component tests only; pure logic needs neither |
+| `@testing-library/react` | 16 | needs the `@testing-library/dom` peer installed **explicitly** |
+| `@testing-library/jest-dom` | 6.9.1 (Node 20) / ≥6.10 (Node ≥22) | engine-gated — see Node row |
+| `@testing-library/user-event` | 14 | user-like interaction |
+| `jsdom` | ≥24 | the DOM environment |
+| `@vitejs/plugin-react` | 4 | JSX/TSX transform — **not** `next/jest`, even on Next.js |
+| `vite-tsconfig-paths` | 5 | resolves `@/*` aliases; ESM-only ⇒ config must be `.mts` |
+| `typescript` | 5.x | — |
+
+**Verify requirements (gate — run before writing any test).**
+Run `node <this-skill>/scripts/preflight.mjs [--component] [--dir <projectRoot>]` (add `--component` when the target is a React component, so it also checks the react/jsdom/RTL stack).
+- **Exit 0** — requirements met; proceed. (A `!` warning like "no vitest config" just means bootstrap first — see below.)
+- **Exit 1** — a hard requirement is missing. **STOP. Do not write tests yet.** Show the user the exact fix commands the script printed (they use the project's own package manager), then either wait for them or, if you're cleared to modify the project, run the install yourself and re-run preflight until it's green.
+- **Exit 2** — not a Node project / wrong directory. Confirm the path with the user before doing anything.
+
+Never write tests against an environment that failed preflight — a green test there is meaningless, and a red one wastes a debugging loop on a missing dependency.
+
+**Tools this skill uses**
+- `node` + the repo's package manager — install deps, run scripts.
+- `node <this-skill>/scripts/preflight.mjs [--component]` — verify requirements (above) before writing.
+- `vitest run <file>` — run **one** test file; the heartbeat of the verify loop (never rely on watch mode for verification).
+- `TZ=UTC` — set on every test invocation so date output is machine-stable.
+- `node <this-skill>/scripts/find-candidates.mjs <path>` — classify a file/dir's exports (`PURE`/`LOGIC`/`COMP`) before writing; exits non-zero when nothing is worth unit-testing.
+
+**Co-location is fixed:** the test lives beside its source (`foo.ts` → `foo.test.ts`), importing it by bare relative path with **no extension** (`from "./foo"`). Don't relocate the source or invent a `src/` layout to hold the test.
+
 ## Contract
 - **Trigger** — writing/updating a unit or component test; testing a pure function, logic, hook, or small component; mocking a module boundary; bootstrapping Vitest+RTL from scratch.
 - **Inputs** — the target function/component and its source; **optionally a specific file or directory to scope to** (explore it first — if it has no good unit-test candidates, stop and say so); the project's stack and existing test setup (or none); the command that runs tests; any env/license the code reads at import.
@@ -36,6 +75,30 @@ When the user points you at specific file(s) or a directory, write tests **only*
 4. Make it pass.
 5. Run the whole file; then the suite.
 6. Never leave `.only` or `.skip`. **An unverified test is not done** — if you didn't watch it run, it isn't finished.
+
+## Errors, stuck states & when to stop
+Testing surfaces two kinds of failure — a bug in the *test* (fix it) and a signal that this target shouldn't be unit-tested this way (stop and escalate). Don't grind; diagnose, then act.
+
+**Budget.** Give one test **≤3 real attempts** to go green. If it's still red after three *distinct* fixes (not the same edit retried), **stop and report** — the loop has become thrashing. Cap a single `vitest run` at ~30s; a test that hangs is almost always a real timer/promise/network leak, not slowness — investigate the leak, don't raise the timeout.
+
+**Common failures → the actual fix:**
+| Symptom | Cause | Do |
+|---|---|---|
+| `Cannot find module` / alias unresolved | missing dep or path alias not wired | re-run **preflight**; add the dep or `vite-tsconfig-paths` — don't rewrite the import to a brittle relative path |
+| `ESM file cannot be loaded by require` | config is `.ts` in a non-ESM project | rename config to **`.mts`** (see setup reference) |
+| `ReferenceError: ResizeObserver/matchMedia is not defined` | jsdom polyfills missing | add them to the **setup file**, before UI imports |
+| Test hangs / times out | real timer, unresolved promise, or live network | mock the boundary; use fake timers; `await` the assertion — never bump the timeout to hide it |
+| Passes even when you break the code | asserts nothing observable (a "always-green" test) | assert real output/behavior; confirm it goes red on a deliberate break |
+| Flaky across runs | real clock, ordering, or shared state | pin `TZ=UTC` + fake timers; sort before asserting; reset mocks in `afterEach` |
+| `engine … is incompatible` on install | dep major needs newer Node | pin the last compatible minor (e.g. `@testing-library/jest-dom@6.9.1` on Node 20) — don't force a Node upgrade |
+
+**When to STOP and hand back to the user** (rather than keep trying):
+- Preflight exit 1 and you're not cleared to install deps → give them the fix commands.
+- The target turns out to be a component/screen/flow that needs a real browser or backend → say so and point to RTL/Playwright; don't force a unit test.
+- A green test would require mocking the very thing under test → the unit is the wrong layer (promote to e2e).
+- Three distinct fixes haven't made it pass → report what you tried, the last error, and your best hypothesis; ask rather than thrash.
+
+Always report failures honestly: if a test is red, say so with the output — never disable, `.skip`, or loosen an assertion just to claim green.
 
 ## Determinism (non-negotiable)
 - **No real clock.** Time-dependent code → `vi.useFakeTimers()` + `vi.setSystemTime(new Date('YYYY-MM-DDT00:00:00Z'))`; restore in `afterEach(() => vi.useRealTimers())`.

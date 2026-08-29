@@ -3,6 +3,9 @@
 //  - prompt: what the agent is asked to do (agent mode)
 //  - requires / forbids: regexes the produced test MUST / MUST NOT match (the auto-checks)
 // The green-run check (does `vitest run` pass?) is applied to every case in addition to these.
+// Each case ALSO has a mutant set under evals/mutants/<id>/ (discovered by the harness, not listed
+// here): buggy fixtures the produced test must go RED on. Green-on-correct proves it passes when it
+// should; red-on-every-mutant proves it fails when it should. Adding a case means adding its mutants.
 
 export const CASES = {
   "01": {

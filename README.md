@@ -13,7 +13,8 @@ TypeScript project; component testing + setup assume React.
 - **`SKILL.md`** — the methodology + contract an agent follows.
 - **`references/`** — from-scratch Vitest+RTL setup and copy-adaptable patterns.
 - **`scripts/find-candidates.mjs`** — scope to a file/dir; classifies exports (PURE / LOGIC / COMP) and errors out when there's nothing worth unit-testing.
-- **`evals/`** — a rubric + one case per known failure mode, and a runnable harness.
+- **`scripts/preflight.mjs`** — verify a project's requirements (Node / package manager / vitest, plus react/jsdom/RTL with `--component`) before writing tests; prints package-manager-aware fixes and exits non-zero when unmet.
+- **`evals/`** — a rubric + one case per known failure mode, golden tests, per-case **mutants** (each produced test must fail on broken code), and a runnable harness.
 
 ## Evaluate across models
 ```bash
@@ -21,7 +22,7 @@ H=evals/harness/run.mjs
 node "$H" --list
 node "$H" --case 01 --candidate ./some.test.ts                # grade an existing test (free, no model)
 node "$H" --golden evals/golden                               # grade the committed golden tests (free — the CI gate)
-node "$H" --agent --provider claude --model claude-opus-4-8   # produce+grade via an agentic CLI: claude / openai / gemini
+node "$H" --agent --provider claude --model claude-opus-4-8   # produce+grade via an agentic CLI: claude / openai / gemini / copilot
 node "$H" --agent --producer 'ollama run {model} {prompt}' --model llama3   # any other CLI/SDK
 ```
 Every run writes `report.json` + a standalone `report.html` recording **provider · model · version**
@@ -30,7 +31,7 @@ to `./eval-report/`. See `evals/harness/README.md` for all modes.
 ## CI
 Two workflows, built for a **public repo with credentialed jobs locked to you**:
 
-- **`grader.yml` — free, runs on PRs/pushes.** Grades the committed **golden tests** (`evals/golden/`) with the harness. No secrets, no model calls — safe for public contributions. Fails if a golden test stops passing the graders (a regression in the fixtures, graders, or setup).
-- **`model-eval.yml` — manual, you-only.** `workflow_dispatch` + `if: github.actor == '<you>'`, so only you can start it. Produces tests with a real model (agent mode) via your Copilot CLI + a `COPILOT_PAT` secret, then grades them. It never runs on pull requests, so the PAT is never exposed publicly.
+- **`grader.yml` — free, runs on PRs/pushes.** Runs the requirements-gate self-test (`evals/preflight/`) and grades the committed **golden tests** (`evals/golden/`) with the harness — each golden must run green *and* go red on every mutant in `evals/mutants/`. No secrets, no model calls — safe for public contributions. Fails if a golden test stops passing the graders (a regression in the fixtures, graders, or setup).
+- **`model-eval.yml` — manual, you-only.** `workflow_dispatch` + `if: github.actor == '<you>'`, so only you can start it. Produces tests with a real model (agent mode) via the Copilot CLI, then grades them. It authenticates with the built-in `GITHUB_TOKEN` + `permissions: copilot-requests: write` (**no PAT**), and never runs on pull requests.
 
 > Heads-up: GitHub Models (the earlier free inference API) was **[retired on 2026-07-30](https://github.blog/changelog/2026-07-30-github-models-is-now-retired/)**. Cross-model eval now runs either locally via the CLIs or in the you-only `model-eval` job. The Copilot CLI install/invocation in `model-eval.yml` is marked **TODO** — verify it against the current Copilot CLI docs before relying on it.
