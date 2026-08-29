@@ -128,7 +128,41 @@ function producerVersion(provider, producer) {
 
 const producedTestIn = (dir) => fs.readdirSync(dir).find((f) => /\.test\.tsx?$/.test(f));
 
-function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
+// The agent — especially the bootstrap case (06) — may write config/setup into the SHARED sandbox
+// root, which would then leak into every case graded afterward in the same run (e.g. a vitest.config
+// that changes the environment for all subsequent `vitest run`s). Snapshot those files before an
+// agent run and restore them after grading, so each case is isolated. Grading still sees the agent's
+// own config; only the leak into later cases is prevented.
+const SANDBOX_GUARD = [
+  "vitest.config.ts", "vitest.config.mts", "vitest.config.js", "vitest.config.mjs", "vitest.config.cts",
+  "vite.config.ts", "vite.config.mts", "vite.config.js",
+  "vitest.setup.ts", "vitest.setup.mts", "vitest.setup.js",
+];
+function snapshotSandbox() {
+  const snap = {};
+  for (const f of SANDBOX_GUARD) {
+    const p = path.join(REPO, f);
+    snap[p] = fs.existsSync(p) ? fs.readFileSync(p) : null;
+  }
+  return snap;
+}
+function restoreSandbox(snap) {
+  for (const [p, buf] of Object.entries(snap)) {
+    if (buf === null) fs.rmSync(p, { force: true });
+    else fs.writeFileSync(p, buf);
+  }
+}
+
+function gradeCase(id, c, opts) {
+  const snap = opts.agent ? snapshotSandbox() : null; // isolate agent side-effects on the shared sandbox
+  try {
+    return gradeCaseInner(id, c, opts);
+  } finally {
+    if (snap) restoreSandbox(snap);
+  }
+}
+
+function gradeCaseInner(id, c, { candidate, agent, model, provider, producer }) {
   const dir = prepCaseDir(id, c);
   if (candidate) {
     if (!fs.existsSync(candidate)) return { id, pass: false, produced: false, reasons: [`candidate not found: ${candidate}`] };
