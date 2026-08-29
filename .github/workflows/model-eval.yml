@@ -2,7 +2,7 @@ name: model-eval
 
 # Show the chosen model in the Actions run list (e.g. "model-eval · gpt-5.3-codex · jonmodell")
 # instead of the generic workflow name. `inputs.model` is available at dispatch time.
-run-name: model-eval · ${{ inputs.model }} · ${{ github.actor }}
+run-name: model-eval · ${{ inputs.model }}${{ inputs.runs != '1' && format('×{0}', inputs.runs) || '' }} · ${{ github.actor }}
 
 # Produces tests with the GitHub Copilot CLI (agent mode), then grades them. This runs Copilot
 # under your account's allowance, so it is locked to you alone:
@@ -40,6 +40,11 @@ on:
           - gemini-3.7-flash
           - gemini-3.1-pro
           - grok-4.6
+      runs:
+        description: "How many times to generate+grade each case (consistency over K runs)"
+        type: choice
+        default: "1"
+        options: ["1", "3", "5"]
 
 permissions:
   contents: write # push the run to the eval-results dashboard branch
@@ -69,6 +74,7 @@ jobs:
           # Copilot CLI reads COPILOT_GITHUB_TOKEN | GH_TOKEN | GITHUB_TOKEN (in that order).
           GITHUB_TOKEN: ${{ github.token }}
           MODEL: ${{ inputs.model }}
+          RUNS: ${{ inputs.runs }}
         # Uses the built-in `copilot` provider (copilot --allow-all-tools -p "<prompt>"). VERIFY the
         # flag names against `copilot --help` — adjust the preset in evals/harness/run.mjs if needed.
         # Capture the exit code instead of failing here: exit 1 = a real graded result (some cases red)
@@ -76,7 +82,7 @@ jobs:
         # the final step turns into a job failure and which we do NOT publish.
         run: |
           set +e
-          node ../run.mjs --agent --provider copilot --model "$MODEL" --out ./eval-report
+          node ../run.mjs --agent --provider copilot --model "$MODEL" --repeat "$RUNS" --out ./eval-report
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           exit 0
 
@@ -87,8 +93,11 @@ jobs:
           if [ -f eval-report/report.json ]; then
             node -e '
               const r = require("./eval-report/report.json");
-              const rows = r.results.map(x => `| ${x.id} | ${x.unit} | ${x.pass ? "✅" : "❌"} |`).join("\n");
-              console.log(`### model eval — ${r.model} — ${r.summary.passed}/${r.summary.total} passed\n\n${r.producerVersion}\n\n| Case | Focus | Result |\n|--|--|--|\n${rows}\n`);
+              const cell = (x) => x.runs ? `${x.passes}/${x.runs}` : x.skip ? "—" : x.pass ? "✅" : "❌";
+              const rows = r.results.map(x => `| ${x.id} | ${x.unit} | ${cell(x)} |`).join("\n");
+              const head = r.repeat ? `${r.model} ×${r.repeat}` : r.model;
+              const unit = r.repeat ? "case-passes" : "passed";
+              console.log(`### model eval — ${head} — ${r.summary.passed}/${r.summary.total} ${unit}\n\n${r.producerVersion}\n\n| Case | Focus | ${r.repeat ? "Consistency" : "Result"} |\n|--|--|--|\n${rows}\n`);
             ' >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### ${{ inputs.model }}: no report (producer failed — check the run log)." >> "$GITHUB_STEP_SUMMARY"

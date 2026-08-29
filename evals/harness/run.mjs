@@ -43,6 +43,7 @@ function parseArgs() {
     provider: val("--provider"),
     producer: val("--producer"),
     golden: val("--golden"),
+    repeat: val("--repeat"),
   };
 }
 
@@ -174,7 +175,7 @@ function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
 }
 
 function main() {
-  const { list, agent, caseId, candidate, out, model, provider, producer, golden } = parseArgs();
+  const { list, agent, caseId, candidate, out, model, provider, producer, golden, repeat } = parseArgs();
 
   if (list) {
     for (const [id, c] of Object.entries(CASES)) console.log(`  ${id}  ${c.unit}`);
@@ -194,6 +195,9 @@ function main() {
   const goldenDir = golden ? path.resolve(golden) : null;
   const mode = candidate ? "grader" : goldenDir ? "golden" : agent ? "agent" : "dry";
   const prov = agent ? (provider ?? (producer ? "custom" : "claude")) : null;
+  // K-run consistency: generation is the nondeterministic step, so --repeat K only makes sense in agent
+  // mode (golden/candidate are deterministic). Clamp to [1,20]. K>1 aggregates per-case pass rate.
+  const runs = agent ? Math.min(20, Math.max(1, parseInt(repeat ?? "1", 10) || 1)) : 1;
   // CI provenance — present only under GitHub Actions; flows into report.json via the {...meta} spread
   // so every published run is self-identifying and links back to the Actions run that produced it.
   const env = process.env;
@@ -213,10 +217,11 @@ function main() {
     provider: prov,
     model: agent ? (model ?? "cli-default") : (model ?? null),
     producerVersion: agent ? producerVersion(provider ?? "claude", producer) : null,
+    ...(runs > 1 ? { repeat: runs } : {}),
     ...ci,
   };
 
-  console.log(`\nvitest-react-unit-testing evals  (${mode} mode${prov ? `, ${prov} ${meta.model}` : ""})\n`);
+  console.log(`\nvitest-react-unit-testing evals  (${mode} mode${runs > 1 ? `×${runs}` : ""}${prov ? `, ${prov} ${meta.model}` : ""})\n`);
   const results = [];
   let failed = 0;
   for (const id of ids) {
@@ -230,6 +235,30 @@ function main() {
       continue;
     }
     const cand = goldenDir ? path.join(goldenDir, `${id}.test.ts`) : candidate;
+
+    if (runs > 1) {
+      // Generate + grade the case K times; report per-case consistency (passes/K).
+      const perRun = [];
+      for (let i = 0; i < runs; i++) perRun.push(gradeCase(id, c, { candidate: cand, agent, model, provider, producer }));
+      const passes = perRun.filter((x) => x.pass).length;
+      const reasons = [...new Set(perRun.flatMap((x) => x.reasons ?? []))].slice(0, 6);
+      const r = {
+        unit: c.unit,
+        id,
+        runs,
+        passes,
+        passRate: passes / runs,
+        produced: perRun.some((x) => x.produced !== false),
+        perRun: perRun.map((x) => ({ pass: !!x.pass, produced: x.produced !== false })),
+        reasons,
+      };
+      results.push(r);
+      const ok = passes === runs;
+      if (!ok) failed++;
+      console.log(`  ${ok ? "✓" : "✗"}  ${id}  ${passes}/${runs}`);
+      continue;
+    }
+
     const r = { unit: c.unit, ...gradeCase(id, c, { candidate: cand, agent, model, provider, producer }) };
     results.push(r);
     if (r.skip) console.log(`  •  ${id}  SKIP — ${r.skip}`);
