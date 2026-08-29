@@ -1,27 +1,33 @@
 ---
-name: unit-testing-for-agents
-description: Write and maintain deterministic Vitest unit + React Testing Library component tests in a TypeScript/React project. Use when writing or updating unit or component tests, testing pure functions, logic, hooks, or small components, mocking module boundaries, or bootstrapping Vitest + RTL from scratch.
+name: vitest-react-unit-testing
+description: Write and maintain deterministic unit and component tests with Vitest + React Testing Library in a TypeScript / React (including Next.js) project. Use when writing or updating unit or component tests, testing pure functions/logic/hooks/small components, mocking module boundaries, scoping tests to specific files or directories, or bootstrapping Vitest + RTL from scratch.
 ---
 
 # Unit & component testing (Vitest + React Testing Library)
 
-Guidance for an AI agent adding fast, deterministic unit/component tests in a TypeScript/React project. Browser flows, auth-gated screens, multi-page journeys, and heavy data grids belong in end-to-end tests — use the **`playwright-testing-for-agents`** skill for those.
+Guidance for an AI agent adding fast, deterministic unit/component tests with **Vitest + React Testing Library** in a TypeScript / React (incl. Next.js) project. Browser flows, auth-gated screens, multi-page journeys, and heavy data grids belong in **end-to-end tests (Playwright)** and are out of scope here.
 
 ## Contract
 - **Trigger** — writing/updating a unit or component test; testing a pure function, logic, hook, or small component; mocking a module boundary; bootstrapping Vitest+RTL from scratch.
-- **Inputs** — the target function/component and its source; the project's stack and existing test setup (or none); the command that runs tests; any env/license the code reads at import.
+- **Inputs** — the target function/component and its source; **optionally a specific file or directory to scope to** (explore it first — if it has no good unit-test candidates, stop and say so); the project's stack and existing test setup (or none); the command that runs tests; any env/license the code reads at import.
 - **Outputs** — a correct-layer test co-located with its source (`*.test.ts(x)`), deterministic, **verified green by actually running it**, with zero `.only`/`.skip` left behind.
 - **Success** — right unit-vs-component choice; the test failed for the *right reason* before it passed; it is deterministic across reruns and timezones; it mocks the boundary, not the unit; it asserts observable behavior, not implementation detail.
-- **Known failure modes** — mocking away the very thing under test; using a real clock/network/DB; leaving `.only`/`.skip`; asserting implementation internals; reaching for RTL on a heavy DataGrid; forgetting jsdom polyfills or a required license key. (Each maps to one eval case in `evals/`.)
+- **Known failure modes** — mocking away the very thing under test; using a real clock/network/DB; leaving `.only`/`.skip`; asserting implementation internals; reaching for RTL on a heavy DataGrid; forgetting jsdom polyfills or a required license key; forcing tests onto a target that has no good unit candidates (components/types) instead of stopping. (Each maps to one eval case in `evals/`.)
 
 ## Pick the layer
 | The code is… | Test it as | Tool |
 |---|---|---|
 | A pure function, transform, reducer, or hook | unit | Vitest |
 | A small presentational/logic component, few deps | component | RTL |
-| A heavy data grid, real data-fetch, auth-gated screen, or multi-page flow | e2e — **defer to `playwright-testing-for-agents`** | Playwright |
+| A heavy data grid, real data-fetch, auth-gated screen, or multi-page flow | e2e (Playwright) — out of scope here | Playwright |
 
 Rule of thumb: **if mocking it out would delete the thing under test, promote it to e2e.**
+
+## Targeted usage: scope to a file or directory
+When the user points you at specific file(s) or a directory, write tests **only** for those — don't wander into the rest of the codebase.
+1. **Explore the target first:** `node <this-skill>/scripts/find-candidates.mjs <path>`. It lists each file's testable exports and tags them: `PURE` (ideal unit target), `LOGIC` (unit-testable by mocking the boundary), `COMP` (a React component → RTL/e2e, not a unit test).
+2. **If it reports no good candidates** (it exits non-zero) — the target is only components, types, or config — **STOP and tell the user** there's nothing worth unit-testing here, and where it belongs instead (RTL for small components, Playwright e2e for screens/flows). **Do not fabricate low-value tests to look busy.**
+3. Otherwise, write tests for the `PURE` and `LOGIC` exports it found, following the loop and rules below.
 
 ## The write → run → verify loop
 1. Write ONE test.

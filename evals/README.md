@@ -1,4 +1,4 @@
-# Evals — `unit-testing-for-agents`
+# Evals — `vitest-react-unit-testing`
 
 These evals grade whether an agent *following this skill* produces the right testing behavior. There is **one case per known failure mode** in the skill's Contract, so the skill is measured against exactly the mistakes it exists to prevent.
 

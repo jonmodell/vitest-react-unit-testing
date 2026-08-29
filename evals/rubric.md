@@ -1,4 +1,4 @@
-# Rubric — `unit-testing-for-agents`
+# Rubric — `vitest-react-unit-testing`
 
 The skill's **success definition**, as gradeable criteria. Each case names which items are load-bearing.
 

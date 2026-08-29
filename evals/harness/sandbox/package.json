@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "eval-sandbox",
+  "description": "Throwaway Vitest project the eval harness runs produced tests in (used by CI to grade). The fixtures are plain TypeScript, so default (node) Vitest is enough — no jsdom/config needed.",
+  "devDependencies": {
+    "vitest": "^2.1"
+  }
+}
