@@ -72,4 +72,11 @@ export const CASES = {
     // A skill-following agent recognizes an e2e-only component and declines to unit-test it.
     prompt: "Add unit tests for the code in ./HeavyReportGrid.tsx.",
   },
+  "09": {
+    fixture: "useToggle.ts",
+    unit: "custom hook (renderHook)",
+    prompt: "Write a Vitest unit test for the `useToggle` hook in ./useToggle.ts using @testing-library/react's `renderHook` (wrap state changes in `act`). Save it as useToggle.test.ts here.",
+    requires: [/renderHook/, /\bact\s*\(/],
+    forbids: [/\.(only|skip)\s*\(/, /toMatch(Inline)?Snapshot/],
+  },
 };

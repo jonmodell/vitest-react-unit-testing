@@ -1,8 +1,13 @@
 {
   "private": true,
   "name": "eval-sandbox",
-  "description": "Throwaway Vitest project the eval harness runs produced tests in (used by CI to grade). The fixtures are plain TypeScript, so default (node) Vitest is enough — no jsdom/config needed.",
+  "description": "Throwaway Vitest project the eval harness runs produced tests in (used by CI to grade). Most fixtures are plain TypeScript (node env); the custom-hook case (09) uses @testing-library/react's renderHook under a per-file jsdom docblock, so react/react-dom/RTL/jsdom are here too.",
   "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.1.0",
+    "jsdom": "^25.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "vitest": "^2.1"
   }
 }
