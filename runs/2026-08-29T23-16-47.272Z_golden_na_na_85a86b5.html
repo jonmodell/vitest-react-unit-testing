@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>vitest-react-unit-testing evals</title><style>
+:root{color-scheme:light dark;--bg:#fafafa;--fg:#1a1a1a;--muted:#666;--line:#e3e3e3;--card:#fff;--pass:#1a7f37;--fail:#cf222e;--skip:#9a6700}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--line:#30363d;--card:#161b22;--pass:#3fb950;--fail:#f85149;--skip:#d29922}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;padding:24px}
+h1{font-size:18px;margin:0 0 4px}.meta{color:var(--muted);font-size:13px;margin-bottom:16px}
+.pills{display:flex;gap:8px;margin:0 0 20px;flex-wrap:wrap}
+.pill{padding:4px 12px;border-radius:999px;font-weight:600;font-size:13px;border:1px solid var(--line)}
+.pill.p{color:var(--pass)}.pill.f{color:var(--fail)}.pill.s{color:var(--skip)}
+tr.part .badge{color:var(--skip)}
+.strip{font-variant-numeric:tabular-nums;letter-spacing:2px}.strip .ok{color:var(--pass)}.strip .no{color:var(--fail)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+tr:last-child td{border-bottom:none}.id{font-variant-numeric:tabular-nums;font-weight:600}
+.badge{font-weight:700;font-size:12px}tr.pass .badge{color:var(--pass)}tr.fail .badge{color:var(--fail)}tr.skip .badge{color:var(--skip)}
+.detail pre{margin:0;white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace;color:var(--fail)}
+</style></head><body>
+<h1>vitest-react-unit-testing &mdash; eval report</h1>
+<div class="meta">golden mode &middot; commit 85a86b5 &middot; 2026-08-29T23:16:47.272Z &middot; <a href="https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33280590481">CI run &rarr;</a></div>
+<div class="pills"><span class="pill p">8 passed</span><span class="pill f">0 failed</span><span class="pill s">1 skipped</span><span class="pill">9 total</span></div>
+<table><thead><tr><th>Case</th><th>Focus</th><th>Result</th><th>Detail</th></tr></thead><tbody>
+<tr class="pass"><td class="id">01</td><td>pure function</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+<tr class="pass"><td class="id">02</td><td>time-dependent (fake timers)</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+<tr class="pass"><td class="id">03</td><td>mock the boundary</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+<tr class="pass"><td class="id">04</td><td>spy query-builder</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+<tr class="pass"><td class="id">05</td><td>request handler (decode-only JWT)</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+<tr class="pass"><td class="id">06</td><td>bootstrap-from-zero</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+<tr class="pass"><td class="id">07</td><td>verify-loop / no skips</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+<tr class="skip"><td class="id">08</td><td>right layer — decline (e2e target)</td><td class="badge">SKIP</td><td class="detail">right-layer decline case — runs under --agent only</td></tr>
+<tr class="pass"><td class="id">09</td><td>custom hook (renderHook)</td><td class="badge">PASS</td><td class="detail">&mdash;</td></tr>
+</tbody></table></body></html>

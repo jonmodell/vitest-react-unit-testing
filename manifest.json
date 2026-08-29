@@ -1,5 +1,54 @@
 [
   {
+    "slug": "2026-08-29T23-16-47.272Z_golden_na_na_85a86b5",
+    "ranAt": "2026-08-29T23:16:47.272Z",
+    "mode": "golden",
+    "provider": null,
+    "model": null,
+    "passed": 8,
+    "failed": 0,
+    "total": 9,
+    "commit": "85a86b5",
+    "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33280590481",
+    "cases": {
+      "01": {
+        "p": 1,
+        "n": 1
+      },
+      "02": {
+        "p": 1,
+        "n": 1
+      },
+      "03": {
+        "p": 1,
+        "n": 1
+      },
+      "04": {
+        "p": 1,
+        "n": 1
+      },
+      "05": {
+        "p": 1,
+        "n": 1
+      },
+      "06": {
+        "p": 1,
+        "n": 1
+      },
+      "07": {
+        "p": 1,
+        "n": 1
+      },
+      "08": {
+        "skip": true
+      },
+      "09": {
+        "p": 1,
+        "n": 1
+      }
+    }
+  },
+  {
     "slug": "2026-08-29T20-57-46.561Z_agent_copilot_gpt-5.3-codex_ea01174",
     "ranAt": "2026-08-29T20:57:46.561Z",
     "mode": "agent",
