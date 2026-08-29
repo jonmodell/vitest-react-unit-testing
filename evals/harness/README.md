@@ -65,16 +65,17 @@ node "$H" --agent --producer 'ollama run {model} {prompt}' --model llama3   # AN
     that can approve it.
   This is the automated form of Phase 1. If no provider is available, use grader mode instead.
 
-## CI — cross-model evals with GitHub Models
-`.github/workflows/evals.yml` (at the skill repo root) runs the harness across a **matrix of GitHub
-Models** on PRs and on demand. It needs no API keys — only the built-in `GITHUB_TOKEN` with
-`permissions: models: read`. Each matrix job:
+## CI — GitHub Models evals
+`.github/workflows/evals.yml` (at the skill repo root) runs the harness against **one GitHub Models
+model per run** — chosen from a **dropdown** on manual dispatch (`Actions → skill-evals → Run
+workflow`), or the default model on pull requests. It needs no API keys — only the built-in
+`GITHUB_TOKEN` with `permissions: models: read`. The job:
 1. installs the `sandbox/` Vitest project,
-2. runs `node ../run.mjs --agent --provider github --model <id>` from the sandbox,
-3. writes that model's pass/fail table to the run **summary** and uploads `report.html`/`report.json` as an artifact.
+2. runs `node ../run.mjs --agent --provider github --model <selected>` from the sandbox,
+3. writes the pass/fail table to the run **summary** and uploads `report.html`/`report.json` as an artifact.
 
-Edit the `matrix.model` list to the exact ids from your GitHub Models catalog. Because the report
-records `provider · model · producerVersion`, each artifact is self-identifying.
+Edit the dropdown `options` (and the PR default) to the exact ids from your GitHub Models catalog.
+Because the report records `provider · model · producerVersion`, each artifact is self-identifying.
 
 ## What "pass" means
 A case passes when the produced test **runs green** under Vitest AND all `requires` patterns are

@@ -1,11 +1,29 @@
 name: skill-evals
 
-# Runs the skill's eval harness across a matrix of GitHub Models. No third-party API keys — the
-# built-in GITHUB_TOKEN + `models: read` is all that's needed. Each job produces tests with one
-# model, grades them (vitest sandbox), and uploads report.json + report.html.
+# Runs the skill's eval harness against ONE GitHub Models model per run. Pick the model from the
+# dropdown on manual dispatch; pull requests use the default. No third-party API keys — the
+# built-in GITHUB_TOKEN + `models: read` is all that's needed.
 
 on:
   workflow_dispatch:
+    inputs:
+      model:
+        description: "GitHub Models model to evaluate"
+        type: choice
+        default: openai/gpt-4o-mini
+        # Verify/adjust these ids against your catalog: https://github.com/marketplace/models
+        options:
+          - openai/gpt-4o-mini
+          - openai/gpt-4o
+          - openai/gpt-4.1
+          - openai/gpt-4.1-mini
+          - openai/o4-mini
+          - meta/Llama-3.3-70B-Instruct
+          - mistral-ai/Mistral-Large-2411
+          - microsoft/Phi-4
+          - deepseek/DeepSeek-V3-0324
+          - cohere/Cohere-command-r-plus-08-2024
+          - xai/grok-3
   pull_request:
     paths:
       - "SKILL.md"
@@ -19,16 +37,10 @@ permissions:
   models: read # enables GitHub Models inference via the built-in GITHUB_TOKEN
 
 jobs:
-  evals:
+  eval:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # Use exact ids from your GitHub Models catalog (https://github.com/marketplace/models).
-        model:
-          - openai/gpt-4o-mini
-          - openai/gpt-4o
-          - meta/Llama-3.3-70B-Instruct
+    env:
+      MODEL: ${{ inputs.model || 'openai/gpt-4o-mini' }} # dropdown on dispatch; default on PRs
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,12 +51,12 @@ jobs:
         working-directory: evals/harness/sandbox
         run: npm install --no-audit --no-fund
 
-      - name: Run evals — ${{ matrix.model }}
+      - name: Run evals (single model)
         working-directory: evals/harness/sandbox
-        continue-on-error: true # comparison run: a weak model failing shouldn't fail the workflow
+        continue-on-error: true # a weak model failing cases shouldn't fail the workflow
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node ../run.mjs --agent --provider github --model "${{ matrix.model }}" --out ./eval-report
+        run: node ../run.mjs --agent --provider github --model "$MODEL" --out ./eval-report
 
       - name: Summarize
         if: always()
@@ -57,12 +69,12 @@ jobs:
               console.log(`### ${r.provider} · ${r.model}\n\n**${r.summary.passed}/${r.summary.total} passed** — ${r.producerVersion}\n\n| Case | Focus | Result |\n|--|--|--|\n${rows}\n`);
             ' >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### ${{ matrix.model }}: no report (inference failed — check the run log)." >> "$GITHUB_STEP_SUMMARY"
+            echo "### $MODEL: no report (inference failed — check the run log)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: eval-report-${{ strategy.job-index }}
+          name: eval-report
           path: evals/harness/sandbox/eval-report
