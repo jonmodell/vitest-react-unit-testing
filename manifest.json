@@ -1,5 +1,17 @@
 [
   {
+    "slug": "2026-08-29T20-30-17.183Z_golden_na_na_ea01174",
+    "ranAt": "2026-08-29T20:30:17.183Z",
+    "mode": "golden",
+    "provider": null,
+    "model": null,
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "commit": "ea01174",
+    "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33273642638"
+  },
+  {
     "slug": "2026-08-29T20-15-10.047Z_agent_copilot_claude-sonnet-4.5_1bd284d",
     "ranAt": "2026-08-29T20:15:10.047Z",
     "mode": "agent",
