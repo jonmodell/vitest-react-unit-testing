@@ -50,8 +50,8 @@ jobs:
     if: github.actor == 'jonmodell' # only you can run the credentialed job
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: model-eval-report
           path: evals/harness/sandbox/eval-report
