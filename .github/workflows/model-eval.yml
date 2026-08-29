@@ -16,17 +16,26 @@ on:
         description: "Model for the Copilot CLI"
         type: choice
         default: auto
-        # Curated dropdown of Copilot CLI model ids. Actions can't populate a dispatch dropdown
-        # dynamically, so this list is hand-maintained — keep it to ids the Copilot CLI actually
-        # serves (Copilot slugs like `claude-sonnet-4.5`, NOT API ids like `claude-opus-4-8`). An
-        # unavailable pick now fails the run loudly (the eval exits 3), so a stale entry can't slip a
-        # green-but-empty result through. Refresh from your Copilot model availability as it changes.
+        # Curated dropdown of Copilot CLI model ids AVAILABLE to this account (from `copilot` → /models,
+        # 2026-08). Actions can't populate a dispatch dropdown dynamically, so it's hand-maintained.
+        # Slug convention is confirmed from the CLI's own "Unavailable" list (gpt-5.6-sol, gpt-5.5,
+        # claude-fable-5): lowercase, dot for version, dash for suffix — so `GPT-5.6 Terra` → gpt-5.6-terra.
+        # NOT available on this account (excluded): the whole Opus family, gpt-5.5, gpt-5.6-sol,
+        # claude-fable-5. An unavailable/typo pick fails the run loudly (the eval exits 3). Re-run /models
+        # and refresh this list as availability changes.
         options:
           - auto
+          - gpt-5.6-terra
+          - gpt-5.6-luna
           - gpt-5.4
-          - gpt-5
+          - gpt-5.3-codex
+          - claude-sonnet-5
+          - claude-sonnet-4.6
           - claude-sonnet-4.5
           - claude-haiku-4.5
+          - gemini-3.7-flash
+          - gemini-3.1-pro
+          - grok-4.6
 
 permissions:
   contents: write # push the run to the eval-results dashboard branch
