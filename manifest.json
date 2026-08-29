@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "2026-08-29T20-13-32.622Z_golden_na_na_1bd284d",
+    "ranAt": "2026-08-29T20:13:32.622Z",
+    "mode": "golden",
+    "provider": null,
+    "model": null,
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "commit": "1bd284d",
+    "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33272904688"
+  }
+]
