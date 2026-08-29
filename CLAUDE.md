@@ -22,6 +22,8 @@ evals/
   golden/NN.test.ts          # a known-good test per case — graded by the free CI gate
   mutants/NN/<name>/*.ts     # buggy fixture(s) per case — the produced test MUST go red on each
   preflight/                 # SELF-TEST of scripts/preflight.mjs (run.mjs + fixture projects); NOT a case
+  check-invariant.mjs        # self-guard: asserts the six-way case invariant is in sync; exit≠0 on drift
+  dashboard/                 # Pages dashboard: index.html + append-run.mjs (accumulate runs → eval-results branch)
   harness/
     run.mjs                  # CLI runner (grader / golden / agent modes)
     cases.mjs                # machine-readable case registry (fixture + prompt + requires/forbids regexes)
@@ -37,6 +39,9 @@ Each known failure mode appears in all of: `SKILL.md` (Contract → Known failur
 `evals/mutants/NN/` (its buggy-fixture set). Adding or changing a case means updating all six, or the
 harness/docs drift. When you add a mutant, run `--golden` — every golden must still catch it (stay
 all-green), which is what proves the mutant is a real, must-catch behavior and not noise.
+**`evals/check-invariant.mjs` enforces this mechanically** (a free CI step): it fails on any case missing
+one of the six artifacts, on a mutant that doesn't replace a real fixture, or on an orphan (a golden/
+mutant/case-doc with no `CASES` entry). Run it after any case change.
 
 ## Running the harness (verification)
 Run **from a project that has Vitest installed** (the harness borrows its vitest) — locally use
@@ -54,13 +59,31 @@ Reports land in `./eval-report/` (`report.json` + `report.html`). **Verified pro
 - `--golden evals/golden` stays **all-green** (from a vitest project / the sandbox).
 - `node evals/preflight/run.mjs` stays **all-green** — the requirements-gate self-test (needs the
   sandbox installed; its "reqs met" scenario points there). Touch `scripts/preflight.mjs`? Re-run it.
-- Validate workflow YAML (e.g. `ruby -ryaml -e "YAML.load_file('.github/workflows/grader.yml')"`).
+- `node evals/check-invariant.mjs` stays **all-green** — the six-way case-invariant self-guard.
+- Validate workflow YAML (e.g. `ruby -ryaml -e "YAML.load_file('.github/workflows/grader.yml')"`); also
+  `.github/actions/publish-dashboard/action.yml` when you touch the dashboard.
 
 ## CI
-- `grader.yml` — free, runs on PRs/pushes, no secrets: runs the preflight-gate self-test
-  (`evals/preflight/run.mjs`) **and** grades the golden tests. The gate.
+- `grader.yml` — free, runs on PRs/pushes (push trigger = **`master`**, the repo default — not `main`),
+  no secrets: `grader` job runs the preflight self-test (`evals/preflight/run.mjs`), the invariant
+  self-guard (`evals/check-invariant.mjs`), **and** grades the golden tests. A separate `publish` job
+  (`needs: grader`, `if: push`, `contents: write`) sends the run to the dashboard — never on PRs, so
+  fork PRs (read-only token) can't publish. The gate.
 - `model-eval.yml` — manual `workflow_dispatch` + `if: github.actor == 'jonmodell'`; uses the built-in
-  `GITHUB_TOKEN` + `permissions: copilot-requests: write` (**no PAT**) to drive the Copilot CLI.
+  `GITHUB_TOKEN` + `permissions: copilot-requests: write` + `contents: write` (**no PAT**) to drive the
+  Copilot CLI and publish the run to the dashboard. The `model` input is a **curated `choice` dropdown**
+  (Actions can't populate it dynamically) — use Copilot slugs (`claude-sonnet-4.5`), not API ids
+  (`claude-opus-4-8`). **Exit-code contract:** `run.mjs` exits **3** on a producer failure (agent mode,
+  no case produced a test — bad model id / missing/unauthed CLI); the workflow turns that into a RED run
+  and does **not** publish it. A real graded result (some cases red) exits **1**, stays green, and is
+  published. Never blanket-`continue-on-error` the eval step — capture the code and gate on it.
+
+## Dashboard (`evals/dashboard/`)
+Every graded run is appended to the orphan **`eval-results`** branch (via the composite action
+`.github/actions/publish-dashboard` → `append-run.mjs`), which **GitHub Pages** serves at
+`https://jonmodell.github.io/vitest-react-unit-testing/`. Provenance (`commit`, `runUrl`, …) is stamped
+into `report.json` by `run.mjs` under Actions. One-time setup + internals: `evals/dashboard/README.md`.
+`index.html` there is the canonical UI; `append-run.mjs` republishes it each run, so edit it there.
 
 ## Gotchas / don'ts
 - Vitest config must be **`.mts`** (ESM) — `vite-tsconfig-paths` is ESM-only and the repo isn't `type:module`.

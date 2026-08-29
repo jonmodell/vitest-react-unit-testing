@@ -6,7 +6,7 @@ name: grader
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
     paths:
       - "SKILL.md"
@@ -34,6 +34,9 @@ jobs:
       - name: Preflight gate eval
         run: node evals/preflight/run.mjs
 
+      - name: Check case invariant
+        run: node evals/check-invariant.mjs
+
       - name: Grade golden tests
         working-directory: evals/harness/sandbox
         run: node ../run.mjs --golden ../../golden --out ./eval-report
@@ -56,3 +59,25 @@ jobs:
         with:
           name: golden-report
           path: evals/harness/sandbox/eval-report
+
+  # Publish the golden run to the Pages dashboard. Separate job so `grader` stays contents:read.
+  # Only on push to master (never on PRs → fork-safe); needs a green grader.
+  publish:
+    needs: grader
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: golden-report
+          path: eval-report
+      - uses: ./.github/actions/publish-dashboard
+        with:
+          report-dir: eval-report
+          token: ${{ github.token }}

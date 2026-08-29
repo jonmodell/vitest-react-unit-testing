@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>vitest-react-unit-testing — eval runs</title>
+<style>
+:root{color-scheme:light dark;--bg:#fafafa;--fg:#1a1a1a;--muted:#666;--line:#e3e3e3;--card:#fff;--pass:#1a7f37;--fail:#cf222e;--skip:#9a6700;--accent:#0969da}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--line:#30363d;--card:#161b22;--pass:#3fb950;--fail:#f85149;--skip:#d29922;--accent:#58a6ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;padding:24px}
+h1{font-size:18px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+.controls select,.controls input{font:13px system-ui,sans-serif;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:720px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+.result{font-weight:700;font-variant-numeric:tabular-nums}
+.result.ok{color:var(--pass)}.result.bad{color:var(--fail)}
+.mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,monospace;font-size:12px}
+.mode{font-size:12px;color:var(--muted)}
+.empty{color:var(--muted);padding:32px;text-align:center;border:1px dashed var(--line);border-radius:8px}
+.err{color:var(--fail);padding:16px;border:1px solid var(--fail);border-radius:8px}
+</style>
+</head>
+<body>
+<h1>vitest-react-unit-testing &mdash; eval runs</h1>
+<div class="sub">Every graded eval run, newest first. Click <strong>Detail</strong> for the per-case report. <span id="count"></span></div>
+<div class="controls" id="controls" hidden>
+  <select id="fMode"><option value="">all modes</option></select>
+  <select id="fProvider"><option value="">all providers</option></select>
+  <select id="fModel"><option value="">all models</option></select>
+</div>
+<div class="wrap"><table id="tbl" hidden><thead><tr>
+  <th>Date (UTC)</th><th>Mode</th><th>Provider &middot; Model</th><th>Result</th><th>Commit</th><th>CI run</th><th>Detail</th>
+</tr></thead><tbody id="rows"></tbody></table></div>
+<div id="empty" class="empty" hidden>No eval runs recorded yet. Runs appear here after CI publishes them.</div>
+<div id="error" class="err" hidden></div>
+
+<script>
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const repoBaseFrom = (runUrl) => {
+  const m = String(runUrl ?? "").match(/^(.*)\/actions\/runs\//);
+  return m ? m[1] : null;
+};
+const fmtDate = (iso) => { try { return new Date(iso).toISOString().replace("T", " ").replace(/:\d\d\.\d+Z$/, " UTC"); } catch { return esc(iso); } };
+
+let RUNS = [];
+function fillFilter(sel, values) {
+  for (const v of [...new Set(values.filter(Boolean))].sort()) {
+    const o = document.createElement("option"); o.value = v; o.textContent = v; sel.appendChild(o);
+  }
+}
+function render() {
+  const mode = document.getElementById("fMode").value;
+  const provider = document.getElementById("fProvider").value;
+  const model = document.getElementById("fModel").value;
+  const rows = RUNS.filter((r) => (!mode || r.mode === mode) && (!provider || r.provider === provider) && (!model || r.model === model));
+  const tb = document.getElementById("rows");
+  tb.innerHTML = rows.map((r) => {
+    const ok = r.failed === 0;
+    const repoBase = repoBaseFrom(r.runUrl);
+    const commitCell = r.commit
+      ? (repoBase ? `<a href="${esc(repoBase)}/commit/${esc(r.commit)}" class="mono">${esc(r.commit)}</a>` : `<span class="mono">${esc(r.commit)}</span>`)
+      : "&mdash;";
+    const runCell = r.runUrl ? `<a href="${esc(r.runUrl)}">run &rarr;</a>` : "&mdash;";
+    const pm = [r.provider, r.model].filter(Boolean).map(esc).join(" &middot; ") || "&mdash;";
+    return `<tr>
+      <td class="mono">${fmtDate(r.ranAt)}</td>
+      <td class="mode">${esc(r.mode)}</td>
+      <td>${pm}</td>
+      <td class="result ${ok ? "ok" : "bad"}">${r.passed}/${r.total}</td>
+      <td>${commitCell}</td>
+      <td>${runCell}</td>
+      <td><a href="runs/${esc(r.slug)}.html">detail &rarr;</a></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("count").textContent = `(${rows.length}${rows.length !== RUNS.length ? ` of ${RUNS.length}` : ""} run${RUNS.length === 1 ? "" : "s"})`;
+}
+
+fetch("manifest.json", { cache: "no-store" })
+  .then((r) => { if (!r.ok) throw new Error(`manifest.json ${r.status}`); return r.json(); })
+  .then((data) => {
+    RUNS = Array.isArray(data) ? data.slice().sort((a, b) => String(b.ranAt).localeCompare(String(a.ranAt))) : [];
+    if (RUNS.length === 0) { document.getElementById("empty").hidden = false; document.getElementById("count").textContent = ""; return; }
+    fillFilter(document.getElementById("fMode"), RUNS.map((r) => r.mode));
+    fillFilter(document.getElementById("fProvider"), RUNS.map((r) => r.provider));
+    fillFilter(document.getElementById("fModel"), RUNS.map((r) => r.model));
+    for (const id of ["fMode", "fProvider", "fModel"]) document.getElementById(id).addEventListener("change", render);
+    document.getElementById("controls").hidden = false;
+    document.getElementById("tbl").hidden = false;
+    render();
+  })
+  .catch((e) => {
+    // A missing manifest is the pre-first-publish state, not an error.
+    if (String(e.message).includes("404")) { document.getElementById("empty").hidden = false; return; }
+    const el = document.getElementById("error"); el.hidden = false; el.textContent = `Could not load runs: ${e.message}`;
+  });
+</script>
+</body>
+</html>
