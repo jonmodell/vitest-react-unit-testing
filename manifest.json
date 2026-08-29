@@ -1,5 +1,55 @@
 [
   {
+    "slug": "2026-08-29T23-17-27.595Z_agent_copilot_claude-sonnet-4.5_85a86b5",
+    "ranAt": "2026-08-29T23:17:27.595Z",
+    "mode": "agent×3",
+    "provider": "copilot",
+    "model": "claude-sonnet-4.5",
+    "passed": 27,
+    "failed": 0,
+    "total": 27,
+    "commit": "85a86b5",
+    "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33280612929",
+    "cases": {
+      "01": {
+        "p": 3,
+        "n": 3
+      },
+      "02": {
+        "p": 3,
+        "n": 3
+      },
+      "03": {
+        "p": 3,
+        "n": 3
+      },
+      "04": {
+        "p": 3,
+        "n": 3
+      },
+      "05": {
+        "p": 3,
+        "n": 3
+      },
+      "06": {
+        "p": 3,
+        "n": 3
+      },
+      "07": {
+        "p": 3,
+        "n": 3
+      },
+      "08": {
+        "p": 3,
+        "n": 3
+      },
+      "09": {
+        "p": 3,
+        "n": 3
+      }
+    }
+  },
+  {
     "slug": "2026-08-29T23-16-47.272Z_golden_na_na_85a86b5",
     "ranAt": "2026-08-29T23:16:47.272Z",
     "mode": "golden",

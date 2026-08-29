@@ -1,0 +1,230 @@
+{
+  "mode": "agent",
+  "ranAt": "2026-08-29T23:17:27.595Z",
+  "provider": "copilot",
+  "model": "claude-sonnet-4.5",
+  "producerVersion": "copilot GitHub Copilot CLI 1.0.81.\nRun 'copilot update' to check for updates.",
+  "repeat": 3,
+  "commit": "85a86b5",
+  "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33280612929",
+  "ref": "master",
+  "actor": "jonmodell",
+  "event": "workflow_dispatch",
+  "workflow": "model-eval",
+  "summary": {
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "total": 27,
+    "cases": 9
+  },
+  "results": [
+    {
+      "unit": "pure function",
+      "id": "01",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "time-dependent (fake timers)",
+      "id": "02",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "mock the boundary",
+      "id": "03",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "spy query-builder",
+      "id": "04",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "request handler (decode-only JWT)",
+      "id": "05",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "bootstrap-from-zero",
+      "id": "06",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "verify-loop / no skips",
+      "id": "07",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "right layer — decline (e2e target)",
+      "id": "08",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    },
+    {
+      "unit": "custom hook (renderHook)",
+      "id": "09",
+      "runs": 3,
+      "passes": 3,
+      "passRate": 1,
+      "produced": true,
+      "perRun": [
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        },
+        {
+          "pass": true,
+          "produced": true
+        }
+      ],
+      "reasons": []
+    }
+  ]
+}
