@@ -65,6 +65,9 @@ node "$H" --agent --producer 'ollama run {model} {prompt}' --model llama3   # AN
     a custom SDK runner, etc. (Goes through a shell, so don't route skill-text prompts through it.)
   - Costs tokens. Case 06 (bootstrap) also runs shell commands — grant Bash or run it in a terminal
     that can approve it.
+  - **`--repeat K`** (agent only): generation is the nondeterministic step, so grade each case **K
+    times** and report per-case consistency (`passes/K` + a per-run ✓/✗ strip), mode `agent×K`. The
+    report `summary` becomes case-passes / (cases×K).
   This is the automated form of Phase 1. If no provider is available, use grader/golden mode instead.
 
 ## CI
