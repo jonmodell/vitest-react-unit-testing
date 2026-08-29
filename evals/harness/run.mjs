@@ -177,12 +177,26 @@ function main() {
   const goldenDir = golden ? path.resolve(golden) : null;
   const mode = candidate ? "grader" : goldenDir ? "golden" : agent ? "agent" : "dry";
   const prov = agent ? (provider ?? (producer ? "custom" : "claude")) : null;
+  // CI provenance — present only under GitHub Actions; flows into report.json via the {...meta} spread
+  // so every published run is self-identifying and links back to the Actions run that produced it.
+  const env = process.env;
+  const ci = env.GITHUB_ACTIONS
+    ? {
+        commit: (env.GITHUB_SHA ?? "").slice(0, 7),
+        runUrl: `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`,
+        ref: env.GITHUB_REF_NAME ?? null,
+        actor: env.GITHUB_ACTOR ?? null,
+        event: env.GITHUB_EVENT_NAME ?? null,
+        workflow: env.GITHUB_WORKFLOW ?? null,
+      }
+    : {};
   const meta = {
     mode,
     ranAt: new Date().toISOString(),
     provider: prov,
     model: agent ? (model ?? "cli-default") : (model ?? null),
     producerVersion: agent ? producerVersion(provider ?? "claude", producer) : null,
+    ...ci,
   };
 
   console.log(`\nvitest-react-unit-testing evals  (${mode} mode${prov ? `, ${prov} ${meta.model}` : ""})\n`);

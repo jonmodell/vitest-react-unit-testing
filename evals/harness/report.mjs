@@ -35,8 +35,10 @@ function renderHtml(doc) {
   if (doc.provider && doc.model) metaBits.push(`${doc.provider} · ${doc.model}`);
   else if (doc.model) metaBits.push(doc.model);
   if (doc.producerVersion) metaBits.push(doc.producerVersion);
+  if (doc.commit) metaBits.push(`commit ${doc.commit}`);
   metaBits.push(doc.ranAt);
   const metaLine = metaBits.map(esc).join(" &middot; ");
+  const runLink = doc.runUrl ? ` &middot; <a href="${esc(doc.runUrl)}">CI run &rarr;</a>` : "";
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>vitest-react-unit-testing evals</title><style>
 :root{color-scheme:light dark;--bg:#fafafa;--fg:#1a1a1a;--muted:#666;--line:#e3e3e3;--card:#fff;--pass:#1a7f37;--fail:#cf222e;--skip:#9a6700}
@@ -54,7 +56,7 @@ tr:last-child td{border-bottom:none}.id{font-variant-numeric:tabular-nums;font-w
 .detail pre{margin:0;white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace;color:var(--fail)}
 </style></head><body>
 <h1>vitest-react-unit-testing &mdash; eval report</h1>
-<div class="meta">${metaLine}</div>
+<div class="meta">${metaLine}${runLink}</div>
 <div class="pills"><span class="pill p">${s.passed} passed</span><span class="pill f">${s.failed} failed</span>${s.skipped ? `<span class="pill s">${s.skipped} skipped</span>` : ""}<span class="pill">${s.total} total</span></div>
 <table><thead><tr><th>Case</th><th>Focus</th><th>Result</th><th>Detail</th></tr></thead><tbody>
 ${rows}

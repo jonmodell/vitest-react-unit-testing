@@ -18,7 +18,7 @@ on:
         default: auto
 
 permissions:
-  contents: read
+  contents: write # push the run to the eval-results dashboard branch
   copilot-requests: write # lets the built-in GITHUB_TOKEN make Copilot requests — no PAT needed
 
 jobs:
@@ -69,3 +69,13 @@ jobs:
         with:
           name: model-eval-report
           path: evals/harness/sandbox/eval-report
+
+      # Publish to the Pages dashboard. continue-on-error so a producer failure (no report) can't
+      # red the run — append-run.mjs exits non-zero when there's nothing to publish.
+      - name: Publish to dashboard
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/publish-dashboard
+        with:
+          report-dir: evals/harness/sandbox/eval-report
+          token: ${{ github.token }}

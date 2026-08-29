@@ -1,0 +1,50 @@
+name: Publish eval run to dashboard
+description: >
+  Append one eval run's report to the `eval-results` branch that GitHub Pages serves.
+  Clones that branch (creating it as an orphan on first run), runs append-run.mjs to add the
+  report + refresh the manifest/UI, then commits and pushes. Requires contents:write.
+
+inputs:
+  report-dir:
+    description: Directory (relative to the workspace) containing report.json + report.html.
+    required: true
+  token:
+    description: A GITHUB_TOKEN with contents:write on this repo.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        REPORT_DIR: ${{ inputs.report-dir }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        BRANCH=eval-results
+        REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+        PUB="$(mktemp -d)"
+
+        if git clone --branch "$BRANCH" --single-branch --depth 1 "$REMOTE" "$PUB" 2>/dev/null; then
+          echo "cloned existing $BRANCH"
+        else
+          echo "creating orphan $BRANCH"
+          git clone --depth 1 "$REMOTE" "$PUB"
+          git -C "$PUB" checkout --orphan "$BRANCH"
+          git -C "$PUB" rm -rf . >/dev/null 2>&1 || true
+        fi
+
+        git -C "$PUB" config user.name "github-actions[bot]"
+        git -C "$PUB" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        node "$GITHUB_WORKSPACE/evals/dashboard/append-run.mjs" --report "$GITHUB_WORKSPACE/$REPORT_DIR" --pub "$PUB"
+
+        git -C "$PUB" add -A
+        if git -C "$PUB" diff --cached --quiet; then
+          echo "no dashboard changes to publish"
+        else
+          git -C "$PUB" commit -m "eval run $(date -u +%FT%TZ) [skip ci]"
+          git -C "$PUB" push "$REMOTE" "HEAD:$BRANCH"
+          echo "pushed to $BRANCH"
+        fi
+        rm -rf "$PUB"
