@@ -37,6 +37,7 @@ function parseArgs() {
     model: val("--model"),
     provider: val("--provider"),
     producer: val("--producer"),
+    golden: val("--golden"),
   };
 }
 
@@ -51,7 +52,6 @@ function prepCaseDir(id, c) {
 }
 
 const SKILL_MD = path.join(__dirname, "..", "..", "SKILL.md");
-const GH_PRODUCER = path.join(__dirname, "producers", "github-models.mjs");
 
 // Built-in provider presets. Each returns { cmd, args } WITHOUT the prompt (appended last as a
 // positional). CLI flags evolve — override any of these with a raw `--producer` template.
@@ -59,6 +59,9 @@ const PRODUCERS = {
   claude: (model) => ({ cmd: "claude", args: ["-p", "--permission-mode", "acceptEdits", ...(model ? ["--model", model] : [])] }),
   openai: (model) => ({ cmd: "codex", args: ["exec", ...(model ? ["--model", model] : [])] }),
   gemini: (model) => ({ cmd: "gemini", args: ["--yolo", ...(model ? ["-m", model] : []), "-p"] }),
+  // Copilot CLI: `-p` = non-interactive prompt; `--allow-all` runs tools (incl. file writes)
+  // without approval — required for headless. `--model auto` or e.g. gpt-5.4.
+  copilot: (model) => ({ cmd: "copilot", args: ["--allow-all", ...(model ? ["--model", model] : []), "-p"] }),
 };
 
 // The skill is injected into the prompt so NON-Claude providers (which don't auto-load it) still
@@ -66,6 +69,16 @@ const PRODUCERS = {
 function buildPrompt(c) {
   const skill = fs.readFileSync(SKILL_MD, "utf8");
   return `${skill}\n\n----- TASK -----\n${c.prompt} Write the test file in the current directory. Do not modify the fixture, then stop.`;
+}
+
+// Runs a producer, streaming stdout but CAPTURING stderr so a failure's real reason (e.g. an
+// "inference HTTP 401" from the API) reaches the report, not just the step log.
+function spawnCapture(cmd, args, opts) {
+  try {
+    execFileSync(cmd, args, { stdio: ["ignore", "inherit", "pipe"], ...opts });
+  } catch (e) {
+    throw new Error((e.stderr?.toString() ?? e.message ?? String(e)).trim());
+  }
 }
 
 // Spawns a fresh producer in the case's temp dir to WRITE the test.
@@ -76,26 +89,24 @@ function produceWithAgent(dir, c, { provider = "claude", model, producer }) {
       .replaceAll("{model}", model ?? "")
       .replaceAll("{dir}", dir)
       .replaceAll("{prompt}", JSON.stringify(buildPrompt(c)));
-    execSync(cmdline, { cwd: dir, stdio: "inherit" });
+    try {
+      execSync(cmdline, { cwd: dir, stdio: ["ignore", "inherit", "pipe"] });
+    } catch (e) {
+      throw new Error((e.stderr?.toString() ?? e.message ?? String(e)).trim());
+    }
     return;
   }
-  // GitHub Models (inference API, no per-provider CLI). Skill passed via env; auth = GITHUB_TOKEN.
-  if (provider === "github") {
-    const args = [GH_PRODUCER, "--model", model ?? "openai/gpt-4o", "--unit", fixturesFor(c)[0], c.prompt];
-    execFileSync("node", args, { cwd: dir, stdio: "inherit", env: { ...process.env, SKILL_MD } });
-    return;
-  }
-  // Agentic CLI providers (claude / openai-codex / gemini).
+  // Agentic CLI providers (claude / openai-codex / gemini). For anything else — including a
+  // Copilot CLI or a hosted API — use `--producer "<command template>"`.
   const preset = PRODUCERS[provider];
-  if (!preset) throw new Error(`unknown --provider "${provider}" (use claude|openai|gemini|github, or --producer "<template>")`);
+  if (!preset) throw new Error(`unknown --provider "${provider}" (use claude|openai|gemini|copilot, or --producer "<template>")`);
   const { cmd, args } = preset(model);
-  execFileSync(cmd, [...args, buildPrompt(c)], { cwd: dir, stdio: "inherit" });
+  spawnCapture(cmd, [...args, buildPrompt(c)], { cwd: dir });
 }
 
 // Best-effort record of exactly what produced the tests, for the report.
 function producerVersion(provider, producer) {
   if (producer) return producer.split(/\s+/)[0];
-  if (provider === "github") return "GitHub Models";
   const cmd = PRODUCERS[provider]?.(undefined)?.cmd ?? provider;
   try {
     return `${cmd} ${execFileSync(cmd, ["--version"], { stdio: "pipe" }).toString().trim()}`;
@@ -109,12 +120,14 @@ const producedTestIn = (dir) => fs.readdirSync(dir).find((f) => /\.test\.tsx?$/.
 function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
   const dir = prepCaseDir(id, c);
   if (candidate) {
+    if (!fs.existsSync(candidate)) return { id, pass: false, reasons: [`candidate not found: ${candidate}`] };
     fs.copyFileSync(path.resolve(candidate), path.join(dir, path.basename(candidate)));
   } else if (agent) {
     try {
       produceWithAgent(dir, c, { provider, model, producer });
     } catch (e) {
-      return { id, pass: false, reasons: [`producer failed: ${(e.message ?? String(e)).split("\n")[0]}`] };
+      const msg = (e.message ?? String(e)).trim().split("\n").filter(Boolean).slice(-2).join(" | ");
+      return { id, pass: false, reasons: [`producer failed: ${msg.slice(0, 400)}`] };
     }
   } else {
     return { id, skip: "no candidate — pass --candidate <file> or --agent" };
@@ -132,7 +145,7 @@ function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
 }
 
 function main() {
-  const { list, agent, caseId, candidate, out, model, provider, producer } = parseArgs();
+  const { list, agent, caseId, candidate, out, model, provider, producer, golden } = parseArgs();
 
   if (list) {
     for (const [id, c] of Object.entries(CASES)) console.log(`  ${id}  ${c.unit}`);
@@ -148,7 +161,9 @@ function main() {
     process.exit(2);
   }
 
-  const mode = candidate ? "grader" : agent ? "agent" : "dry";
+  // Golden mode: grade committed `<golden>/<id>.test.ts` per case — the free, deterministic CI gate.
+  const goldenDir = golden ? path.resolve(golden) : null;
+  const mode = candidate ? "grader" : goldenDir ? "golden" : agent ? "agent" : "dry";
   const prov = agent ? (provider ?? (producer ? "custom" : "claude")) : null;
   const meta = {
     mode,
@@ -162,7 +177,8 @@ function main() {
   const results = [];
   let failed = 0;
   for (const id of ids) {
-    const r = { unit: CASES[id].unit, ...gradeCase(id, CASES[id], { candidate, agent, model, provider, producer }) };
+    const cand = goldenDir ? path.join(goldenDir, `${id}.test.ts`) : candidate;
+    const r = { unit: CASES[id].unit, ...gradeCase(id, CASES[id], { candidate: cand, agent, model, provider, producer }) };
     results.push(r);
     if (r.skip) console.log(`  •  ${id}  SKIP — ${r.skip}`);
     else if (r.pass) console.log(`  ✓  ${id}  PASS`);

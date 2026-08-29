@@ -1,0 +1,55 @@
+name: grader
+
+# Free, deterministic gate — grades the committed GOLDEN tests with the eval harness. No secrets,
+# no model calls, so it's safe to run on public PRs. Fails if any golden test stops passing the
+# graders (a regression in the fixtures, the graders, or the skill's setup).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "SKILL.md"
+      - "references/**"
+      - "scripts/**"
+      - "evals/**"
+      - ".github/workflows/grader.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  grader:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install vitest sandbox
+        working-directory: evals/harness/sandbox
+        run: npm install --no-audit --no-fund
+
+      - name: Grade golden tests
+        working-directory: evals/harness/sandbox
+        run: node ../run.mjs --golden ../../golden --out ./eval-report
+
+      - name: Summarize
+        if: always()
+        working-directory: evals/harness/sandbox
+        run: |
+          if [ -f eval-report/report.json ]; then
+            node -e '
+              const r = require("./eval-report/report.json");
+              const rows = r.results.map(x => `| ${x.id} | ${x.unit} | ${x.pass ? "✅" : "❌"} |`).join("\n");
+              console.log(`### golden grader — ${r.summary.passed}/${r.summary.total} passed\n\n| Case | Focus | Result |\n|--|--|--|\n${rows}\n`);
+            ' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-report
+          path: evals/harness/sandbox/eval-report

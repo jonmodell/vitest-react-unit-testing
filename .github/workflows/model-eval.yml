@@ -1,0 +1,71 @@
+name: model-eval
+
+# Produces tests with the GitHub Copilot CLI (agent mode), then grades them. This runs Copilot
+# under your account's allowance, so it is locked to you alone:
+#   - workflow_dispatch only (never on pull_request) — only accounts with write access can start it
+#   - `if: github.actor == 'jonmodell'` — only you, even if collaborators are added
+#
+# NO personal access token: as of 2026-07, the Copilot CLI in Actions authenticates with the
+# built-in GITHUB_TOKEN via the `copilot-requests: write` permission below.
+# (The Copilot CLI install + non-interactive invocation are marked TODO — verify against its docs.)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Model for the Copilot CLI (e.g. auto, gpt-5.4, claude-sonnet-4.5)"
+        type: string
+        default: auto
+
+permissions:
+  contents: read
+  copilot-requests: write # lets the built-in GITHUB_TOKEN make Copilot requests — no PAT needed
+
+jobs:
+  model-eval:
+    if: github.actor == 'jonmodell' # only you can run the credentialed job
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install vitest sandbox
+        working-directory: evals/harness/sandbox
+        run: npm install --no-audit --no-fund
+
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot # provides the `copilot` binary (confirm this matches how you installed it)
+
+      - name: Run model eval
+        working-directory: evals/harness/sandbox
+        continue-on-error: true
+        env:
+          # Copilot CLI reads COPILOT_GITHUB_TOKEN | GH_TOKEN | GITHUB_TOKEN (in that order).
+          GITHUB_TOKEN: ${{ github.token }}
+          MODEL: ${{ inputs.model }}
+        # Uses the built-in `copilot` provider (copilot --allow-all-tools -p "<prompt>"). VERIFY the
+        # flag names against `copilot --help` — adjust the preset in evals/harness/run.mjs if needed.
+        run: node ../run.mjs --agent --provider copilot --model "$MODEL" --out ./eval-report
+
+      - name: Summarize
+        if: always()
+        working-directory: evals/harness/sandbox
+        run: |
+          if [ -f eval-report/report.json ]; then
+            node -e '
+              const r = require("./eval-report/report.json");
+              const rows = r.results.map(x => `| ${x.id} | ${x.unit} | ${x.pass ? "✅" : "❌"} |`).join("\n");
+              console.log(`### model eval — ${r.model} — ${r.summary.passed}/${r.summary.total} passed\n\n${r.producerVersion}\n\n| Case | Focus | Result |\n|--|--|--|\n${rows}\n`);
+            ' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ${{ inputs.model }}: no report (producer failed — check the run log)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-eval-report
+          path: evals/harness/sandbox/eval-report
