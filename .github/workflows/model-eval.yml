@@ -13,9 +13,20 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: "Model for the Copilot CLI (e.g. auto, gpt-5.4, claude-sonnet-4.5)"
-        type: string
+        description: "Model for the Copilot CLI"
+        type: choice
         default: auto
+        # Curated dropdown of Copilot CLI model ids. Actions can't populate a dispatch dropdown
+        # dynamically, so this list is hand-maintained — keep it to ids the Copilot CLI actually
+        # serves (Copilot slugs like `claude-sonnet-4.5`, NOT API ids like `claude-opus-4-8`). An
+        # unavailable pick now fails the run loudly (the eval exits 3), so a stale entry can't slip a
+        # green-but-empty result through. Refresh from your Copilot model availability as it changes.
+        options:
+          - auto
+          - gpt-5.4
+          - gpt-5
+          - claude-sonnet-4.5
+          - claude-haiku-4.5
 
 permissions:
   contents: write # push the run to the eval-results dashboard branch
@@ -39,15 +50,22 @@ jobs:
         run: npm install -g @github/copilot # provides the `copilot` binary (confirm this matches how you installed it)
 
       - name: Run model eval
+        id: eval
         working-directory: evals/harness/sandbox
-        continue-on-error: true
         env:
           # Copilot CLI reads COPILOT_GITHUB_TOKEN | GH_TOKEN | GITHUB_TOKEN (in that order).
           GITHUB_TOKEN: ${{ github.token }}
           MODEL: ${{ inputs.model }}
         # Uses the built-in `copilot` provider (copilot --allow-all-tools -p "<prompt>"). VERIFY the
         # flag names against `copilot --help` — adjust the preset in evals/harness/run.mjs if needed.
-        run: node ../run.mjs --agent --provider copilot --model "$MODEL" --out ./eval-report
+        # Capture the exit code instead of failing here: exit 1 = a real graded result (some cases red)
+        # which we still publish; exit 3 = producer/config failure (bad model id, CLI missing) which
+        # the final step turns into a job failure and which we do NOT publish.
+        run: |
+          set +e
+          node ../run.mjs --agent --provider copilot --model "$MODEL" --out ./eval-report
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
 
       - name: Summarize
         if: always()
@@ -70,12 +88,20 @@ jobs:
           name: model-eval-report
           path: evals/harness/sandbox/eval-report
 
-      # Publish to the Pages dashboard. continue-on-error so a producer failure (no report) can't
-      # red the run — append-run.mjs exits non-zero when there's nothing to publish.
+      # Publish to the Pages dashboard — but ONLY a real result. Skip on a producer failure (exit 3)
+      # so a bad-model run can't pollute the dashboard with a bogus 0/N.
       - name: Publish to dashboard
-        if: always()
+        if: always() && steps.eval.outputs.exit_code != '3'
         continue-on-error: true
         uses: ./.github/actions/publish-dashboard
         with:
           report-dir: evals/harness/sandbox/eval-report
           token: ${{ github.token }}
+
+      # Fail the run on a producer/model error, so an unavailable model id (or a broken/unauthenticated
+      # CLI) is a RED run, not a green one with 0/N. A real graded result (exit 1) stays green.
+      - name: Fail on producer/model error
+        if: steps.eval.outputs.exit_code == '3'
+        run: |
+          echo "::error::Model '${{ inputs.model }}' produced no tests — likely not a valid Copilot model id, or the CLI is missing/unauthenticated. Pick a supported model from the dropdown."
+          exit 1

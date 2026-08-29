@@ -125,21 +125,23 @@ const producedTestIn = (dir) => fs.readdirSync(dir).find((f) => /\.test\.tsx?$/.
 function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
   const dir = prepCaseDir(id, c);
   if (candidate) {
-    if (!fs.existsSync(candidate)) return { id, pass: false, reasons: [`candidate not found: ${candidate}`] };
+    if (!fs.existsSync(candidate)) return { id, pass: false, produced: false, reasons: [`candidate not found: ${candidate}`] };
     fs.copyFileSync(path.resolve(candidate), path.join(dir, path.basename(candidate)));
   } else if (agent) {
     try {
       produceWithAgent(dir, c, { provider, model, producer });
     } catch (e) {
       const msg = (e.message ?? String(e)).trim().split("\n").filter(Boolean).slice(-2).join(" | ");
-      return { id, pass: false, reasons: [`producer failed: ${msg.slice(0, 400)}`] };
+      // produced:false — the producer/CLI never ran (bad model id, missing CLI, auth). main() treats
+      // an all-cases producer failure as a hard config error (exit 3), NOT a "the model scored 0" result.
+      return { id, pass: false, produced: false, reasons: [`producer failed: ${msg.slice(0, 400)}`] };
     }
   } else {
     return { id, skip: "no candidate — pass --candidate <file> or --agent" };
   }
 
   const testFile = producedTestIn(dir);
-  if (!testFile) return { id, pass: false, reasons: ["no *.test.ts was produced"] };
+  if (!testFile) return { id, pass: false, produced: false, reasons: ["no *.test.ts was produced"] };
 
   const src = fs.readFileSync(path.join(dir, testFile), "utf8");
   const reasons = checkGreps(src, c);
@@ -153,7 +155,7 @@ function gradeCase(id, c, { candidate, agent, model, provider, producer }) {
       reasons.push(`mutant survived (test stayed green on broken code): ${s}`);
     }
   }
-  return { id, pass: green && reasons.length === 0, reasons };
+  return { id, pass: green && reasons.length === 0, produced: true, reasons };
 }
 
 function main() {
@@ -217,9 +219,16 @@ function main() {
 
   const outDir = path.resolve(out ?? "./eval-report");
   const { jsonPath, htmlPath } = writeReports(outDir, meta, results);
-  console.log(`\n${failed ? `${failed} failed` : "all passed"}`);
+
+  // A producer failure (agent mode, but not a single case produced a test) is a config/model error —
+  // e.g. a bad --model id or a missing/unauthenticated CLI — NOT a real "the model scored 0" result.
+  // Exit 3 so CI can fail the run and skip publishing it, instead of recording a bogus 0/N.
+  const gradeable = results.filter((r) => !r.skip);
+  const producerFailure = agent && gradeable.length > 0 && gradeable.every((r) => r.produced === false);
+
+  console.log(`\n${producerFailure ? "producer FAILED — no tests were produced (bad --model id, or the CLI is missing/unauthenticated)" : failed ? `${failed} failed` : "all passed"}`);
   console.log(`report: ${path.relative(REPO, htmlPath)}  (+ ${path.basename(jsonPath)})\n`);
-  process.exit(failed ? 1 : 0);
+  process.exit(producerFailure ? 3 : failed ? 1 : 0);
 }
 
 main();

@@ -71,7 +71,12 @@ Reports land in `./eval-report/` (`report.json` + `report.html`). **Verified pro
   fork PRs (read-only token) can't publish. The gate.
 - `model-eval.yml` — manual `workflow_dispatch` + `if: github.actor == 'jonmodell'`; uses the built-in
   `GITHUB_TOKEN` + `permissions: copilot-requests: write` + `contents: write` (**no PAT**) to drive the
-  Copilot CLI and publish the run to the dashboard.
+  Copilot CLI and publish the run to the dashboard. The `model` input is a **curated `choice` dropdown**
+  (Actions can't populate it dynamically) — use Copilot slugs (`claude-sonnet-4.5`), not API ids
+  (`claude-opus-4-8`). **Exit-code contract:** `run.mjs` exits **3** on a producer failure (agent mode,
+  no case produced a test — bad model id / missing/unauthed CLI); the workflow turns that into a RED run
+  and does **not** publish it. A real graded result (some cases red) exits **1**, stays green, and is
+  published. Never blanket-`continue-on-error` the eval step — capture the code and gate on it.
 
 ## Dashboard (`evals/dashboard/`)
 Every graded run is appended to the orphan **`eval-results`** branch (via the composite action
