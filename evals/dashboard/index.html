@@ -25,19 +25,34 @@ tr:last-child td{border-bottom:none}
 .mode{font-size:12px;color:var(--muted)}
 .empty{color:var(--muted);padding:32px;text-align:center;border:1px dashed var(--line);border-radius:8px}
 .err{color:var(--fail);padding:16px;border:1px solid var(--fail);border-radius:8px}
+.tabs{display:flex;gap:4px;margin:0 0 14px}
+.tabs button{font:13px system-ui,sans-serif;padding:5px 12px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--muted);cursor:pointer}
+.tabs button.active{color:var(--fg);border-color:var(--accent);font-weight:600}
+.mcell{text-align:center;font-variant-numeric:tabular-nums;font-weight:600}
+.mcell.ok{color:var(--pass)}.mcell.bad{color:var(--fail)}.mcell.part{color:var(--skip)}.mcell.na{color:var(--muted);font-weight:400}
+#matrix th{text-align:center}#matrix th:first-child,#matrix td:first-child{text-align:left}
+.spark{display:block}
 </style>
 </head>
 <body>
 <h1>vitest-react-unit-testing &mdash; eval runs</h1>
 <div class="sub">Every graded eval run, newest first. Click <strong>Detail</strong> for the per-case report. <span id="count"></span></div>
+<div class="tabs" id="tabs" hidden>
+  <button data-view="runs" class="active">Runs</button>
+  <button data-view="matrix">Matrix</button>
+</div>
 <div class="controls" id="controls" hidden>
   <select id="fMode"><option value="">all modes</option></select>
   <select id="fProvider"><option value="">all providers</option></select>
   <select id="fModel"><option value="">all models</option></select>
 </div>
-<div class="wrap"><table id="tbl" hidden><thead><tr>
+<div class="wrap" id="runsView"><table id="tbl" hidden><thead><tr>
   <th>Date (UTC)</th><th>Mode</th><th>Provider &middot; Model</th><th>Result</th><th>Commit</th><th>CI run</th><th>Detail</th>
 </tr></thead><tbody id="rows"></tbody></table></div>
+<div class="wrap" id="matrixView" hidden>
+  <div class="sub">Latest run per model &times; case (cell = pass, or <code>k/K</code> for a K-run). Trend = overall pass-rate over time.</div>
+  <table id="matrix"></table>
+</div>
 <div id="empty" class="empty" hidden>No eval runs recorded yet. Runs appear here after CI publishes them.</div>
 <div id="error" class="err" hidden></div>
 
@@ -82,6 +97,47 @@ function render() {
   document.getElementById("count").textContent = `(${rows.length}${rows.length !== RUNS.length ? ` of ${RUNS.length}` : ""} run${RUNS.length === 1 ? "" : "s"})`;
 }
 
+const keyOf = (r) => [r.provider, r.model].filter(Boolean).join(" · ") || "(unknown)";
+const allCaseIds = (runs) => [...new Set(runs.flatMap((r) => Object.keys(r.cases ?? {})))].sort();
+function matrixCell(c) {
+  if (!c) return { txt: "", cls: "" };
+  if (c.skip) return { txt: "–", cls: "na" };
+  const { p, n } = c;
+  return { txt: n > 1 ? `${p}/${n}` : p ? "✓" : "✗", cls: p === n ? "ok" : p === 0 ? "bad" : "part" };
+}
+function sparkline(runsForModel) {
+  // runsForModel is newest-first; chart oldest→newest. rate = passed/total in [0,1].
+  const pts = runsForModel.slice().reverse().map((r) => (r.total ? r.passed / r.total : 0));
+  if (pts.length < 2) return "&mdash;";
+  const W = 64, H = 18;
+  const xs = (i) => (pts.length === 1 ? 0 : (i / (pts.length - 1)) * (W - 2) + 1);
+  const ys = (v) => H - 1 - v * (H - 2);
+  const d = pts.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
+  const last = pts[pts.length - 1];
+  const col = last === 1 ? "var(--pass)" : last === 0 ? "var(--fail)" : "var(--skip)";
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline fill="none" stroke="${col}" stroke-width="1.5" points="${d}"/></svg>`;
+}
+function renderMatrix() {
+  const ids = allCaseIds(RUNS);
+  const byKey = new Map(); // key -> runs (newest-first, RUNS already sorted desc)
+  for (const r of RUNS) (byKey.get(keyOf(r)) ?? byKey.set(keyOf(r), []).get(keyOf(r))).push(r);
+  const head = `<thead><tr><th>Provider &middot; Model</th>${ids.map((id) => `<th>${esc(id)}</th>`).join("")}<th>Trend</th></tr></thead>`;
+  const body = [...byKey].map(([key, runs]) => {
+    const latest = runs[0];
+    const cells = ids.map((id) => { const c = matrixCell((latest.cases ?? {})[id]); return `<td class="mcell ${c.cls}">${c.txt}</td>`; }).join("");
+    return `<tr><td>${esc(key)}</td>${cells}<td>${sparkline(runs)}</td></tr>`;
+  }).join("");
+  document.getElementById("matrix").innerHTML = head + `<tbody>${body}</tbody>`;
+}
+function switchView(view) {
+  const matrix = view === "matrix";
+  document.getElementById("runsView").hidden = matrix;
+  document.getElementById("controls").hidden = matrix;
+  document.getElementById("matrixView").hidden = !matrix;
+  for (const b of document.querySelectorAll("#tabs button")) b.classList.toggle("active", b.dataset.view === view);
+  if (matrix) renderMatrix();
+}
+
 fetch("manifest.json", { cache: "no-store" })
   .then((r) => { if (!r.ok) throw new Error(`manifest.json ${r.status}`); return r.json(); })
   .then((data) => {
@@ -93,6 +149,8 @@ fetch("manifest.json", { cache: "no-store" })
     for (const id of ["fMode", "fProvider", "fModel"]) document.getElementById(id).addEventListener("change", render);
     document.getElementById("controls").hidden = false;
     document.getElementById("tbl").hidden = false;
+    document.getElementById("tabs").hidden = false;
+    for (const b of document.querySelectorAll("#tabs button")) b.addEventListener("click", () => switchView(b.dataset.view));
     render();
   })
   .catch((e) => {

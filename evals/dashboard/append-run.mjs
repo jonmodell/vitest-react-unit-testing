@@ -48,10 +48,18 @@ if (fs.existsSync(manifestPath)) {
   if (!Array.isArray(manifest)) manifest = [];
 }
 const s = report.summary ?? {};
+// Per-case results, normalized to { p: passes, n: runs } (n=1 for a single run), so the dashboard
+// matrix has per-case data without fetching every run's JSON. Skips become { skip: true }.
+const cases = {};
+for (const r of report.results ?? []) {
+  if (r.skip) cases[r.id] = { skip: true };
+  else if (typeof r.runs === "number") cases[r.id] = { p: r.passes, n: r.runs };
+  else cases[r.id] = { p: r.pass ? 1 : 0, n: 1 };
+}
 const entry = {
   slug,
   ranAt: report.ranAt ?? null,
-  mode: report.mode ?? null,
+  mode: report.repeat ? `${report.mode}×${report.repeat}` : report.mode ?? null,
   provider: report.provider ?? null,
   model: report.model ?? null,
   passed: s.passed ?? 0,
@@ -59,6 +67,7 @@ const entry = {
   total: s.total ?? 0,
   commit: report.commit ?? null,
   runUrl: report.runUrl ?? null,
+  cases,
 };
 manifest = manifest.filter((m) => m.slug !== slug);
 manifest.push(entry);
