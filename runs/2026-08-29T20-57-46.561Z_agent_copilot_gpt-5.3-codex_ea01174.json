@@ -1,0 +1,72 @@
+{
+  "mode": "agent",
+  "ranAt": "2026-08-29T20:57:46.561Z",
+  "provider": "copilot",
+  "model": "gpt-5.3-codex",
+  "producerVersion": "copilot GitHub Copilot CLI 1.0.81.\nRun 'copilot update' to check for updates.",
+  "commit": "ea01174",
+  "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33274805034",
+  "ref": "master",
+  "actor": "jonmodell",
+  "event": "workflow_dispatch",
+  "workflow": "model-eval",
+  "summary": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 0,
+    "total": 7
+  },
+  "results": [
+    {
+      "unit": "pure function",
+      "id": "01",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "time-dependent (fake timers)",
+      "id": "02",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "mock the boundary",
+      "id": "03",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "spy query-builder",
+      "id": "04",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "request handler (decode-only JWT)",
+      "id": "05",
+      "pass": false,
+      "produced": true,
+      "reasons": [
+        "mutant survived (test stayed green on broken code): 05/manager-rejected"
+      ]
+    },
+    {
+      "unit": "bootstrap-from-zero",
+      "id": "06",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "verify-loop / no skips",
+      "id": "07",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    }
+  ]
+}
