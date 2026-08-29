@@ -1,5 +1,55 @@
 [
   {
+    "slug": "2026-08-29T23-42-18.441Z_agent_copilot_claude-haiku-4.5_929aee4",
+    "ranAt": "2026-08-29T23:42:18.441Z",
+    "mode": "agent",
+    "provider": "copilot",
+    "model": "claude-haiku-4.5",
+    "passed": 9,
+    "failed": 0,
+    "total": 9,
+    "commit": "929aee4",
+    "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33281582093",
+    "cases": {
+      "01": {
+        "p": 1,
+        "n": 1
+      },
+      "02": {
+        "p": 1,
+        "n": 1
+      },
+      "03": {
+        "p": 1,
+        "n": 1
+      },
+      "04": {
+        "p": 1,
+        "n": 1
+      },
+      "05": {
+        "p": 1,
+        "n": 1
+      },
+      "06": {
+        "p": 1,
+        "n": 1
+      },
+      "07": {
+        "p": 1,
+        "n": 1
+      },
+      "08": {
+        "p": 1,
+        "n": 1
+      },
+      "09": {
+        "p": 1,
+        "n": 1
+      }
+    }
+  },
+  {
     "slug": "2026-08-29T23-41-08.961Z_golden_na_na_929aee4",
     "ranAt": "2026-08-29T23:41:08.961Z",
     "mode": "golden",

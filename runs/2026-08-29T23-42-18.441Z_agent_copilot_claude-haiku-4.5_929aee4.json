@@ -1,0 +1,84 @@
+{
+  "mode": "agent",
+  "ranAt": "2026-08-29T23:42:18.441Z",
+  "provider": "copilot",
+  "model": "claude-haiku-4.5",
+  "producerVersion": "copilot GitHub Copilot CLI 1.0.82.\nRun 'copilot update' to check for updates.",
+  "commit": "929aee4",
+  "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33281582093",
+  "ref": "master",
+  "actor": "jonmodell",
+  "event": "workflow_dispatch",
+  "workflow": "model-eval",
+  "summary": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "total": 9
+  },
+  "results": [
+    {
+      "unit": "pure function",
+      "id": "01",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "time-dependent (fake timers)",
+      "id": "02",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "mock the boundary",
+      "id": "03",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "spy query-builder",
+      "id": "04",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "request handler (decode-only JWT)",
+      "id": "05",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "bootstrap-from-zero",
+      "id": "06",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "verify-loop / no skips",
+      "id": "07",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "right layer — decline (e2e target)",
+      "id": "08",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    },
+    {
+      "unit": "custom hook (renderHook)",
+      "id": "09",
+      "pass": true,
+      "produced": true,
+      "reasons": []
+    }
+  ]
+}
