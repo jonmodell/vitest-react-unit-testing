@@ -9,3 +9,5 @@
 **Pass criteria:** rubric R3, R5, R7. Auto-checks: `vitest run` green; uses `toHaveBeenCalledWith` and at least one `not.toHaveBeenCalled*` for a skipped value.
 
 **Failure mode guarded:** failing to assert the boundary contract (or asserting private internals instead of the calls that are the behavior).
+
+**Mutants (test must go red):** `since-as-eq` (`since` routed to `eq` not `gte`); `keeps-empty` (empty values no longer skipped).

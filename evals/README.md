@@ -8,22 +8,28 @@ evals/
 ├── rubric.md        # the shared pass/fail criteria (= the skill's success definition)
 ├── cases/           # 01..07, one scenario per failure mode
 ├── fixtures/        # tiny self-contained TS the cases operate on
-└── harness/         # Phase 2: a runnable, auto-scoring harness (spec only for now)
+├── golden/          # a known-good test per case — the free CI gate grades these
+├── mutants/NN/      # buggy fixtures per case — the produced test MUST go red on each
+├── preflight/       # self-test of scripts/preflight.mjs (the requirements gate)
+└── harness/         # the runnable, auto-scoring harness (built — see harness/README.md)
 ```
 
-Each `cases/NN-*.md` has: **Trigger**, **Input** (task prompt + fixture), **Expected behavior**, **Pass criteria** (rubric items + auto-checks), **Failure mode guarded**.
+Each `cases/NN-*.md` has: **Trigger**, **Input** (task prompt + fixture), **Expected behavior**, **Pass criteria** (rubric items + auto-checks), **Failure mode guarded**, **Mutants**.
 
-## Phase 1 — run now (rubric + auto-checks)
-For each case:
-1. Start a fresh agent session with ONLY this skill loaded.
-2. Give it the case's Input (task prompt + the fixture file).
-3. Take the produced test file and grade it:
-   - **Rubric** (`rubric.md`), by a human or an LLM-judge.
-   - **Auto-checks** (mechanical):
-     - the produced test runs green: `npx vitest run <file>`
-     - no leftover skips: `! grep -REn '\.(only|skip)\(' <file>`
-     - no real I/O: `! grep -REn "fetch\(|http|createClient\((?!\s*\))" <file>` (client must be mocked)
-4. **Pass** = the case's guarded failure mode is absent AND every load-bearing rubric item holds AND auto-checks pass.
+## What "pass" means
+A produced test passes a case when its guarded failure mode is absent, every load-bearing rubric row holds, and the mechanical checks pass:
+- **Runs green** on the correct fixture: `vitest run <file>` (pinned `TZ=UTC`).
+- **Goes red on every mutant** in `mutants/NN/` — proof the assertions could actually fail (rubric R2, mechanized).
+- **Auto-checks**: no leftover `.only`/`.skip`; mocks the boundary, not the unit; per-case `requires`/`forbids` patterns.
+The judgment-only rubric rows (right layer, behavior-over-implementation) still want a human or LLM-judge.
 
-## Phase 2 — runnable harness (not built yet)
-See `harness/README.md` for the spec: a runner that spawns an agent per case with only this skill, captures output, and scores automatically. Implement later.
+## Running it
+The harness is built — run it from a project that has Vitest installed (or `evals/harness/sandbox`):
+```bash
+node evals/harness/run.mjs --list                       # the cases
+node evals/harness/run.mjs --golden evals/golden         # grade the golden tests (the free CI gate)
+node evals/harness/run.mjs --case 01 --candidate <file>  # grade one produced test
+node evals/harness/run.mjs --agent --provider claude     # produce+grade with a real model (costs)
+node evals/preflight/run.mjs                             # the requirements-gate self-test (free)
+```
+See `harness/README.md` for every mode, provider, and the report format.

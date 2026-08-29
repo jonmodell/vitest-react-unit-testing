@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "name": "missing-vitest-pnpm",
+  "description": "Preflight fixture: no vitest, pnpm lockfile present. Preflight must fail (exit 1) and print a PNPM install fix (proves package-manager detection)."
+}

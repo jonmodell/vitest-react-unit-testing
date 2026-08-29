@@ -9,3 +9,5 @@
 **Pass criteria:** rubric R3, R5, R6. Auto-checks: `vitest run` green; file contains `vi.mock` of the client; no real I/O (`! grep -nE "fetch\(|https?://" <file>`).
 
 **Failure mode guarded:** hitting a real client/network, or mocking the unit under test.
+
+**Mutants (test must go red):** `off-by-one-ids` (rows mapped to `id + 1`).
