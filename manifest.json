@@ -1,5 +1,17 @@
 [
   {
+    "slug": "2026-08-29T20-44-22.440Z_agent_copilot_gpt-5.3-codex_ea01174",
+    "ranAt": "2026-08-29T20:44:22.440Z",
+    "mode": "agent",
+    "provider": "copilot",
+    "model": "gpt-5.3-codex",
+    "passed": 5,
+    "failed": 2,
+    "total": 7,
+    "commit": "ea01174",
+    "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33274247438"
+  },
+  {
     "slug": "2026-08-29T20-37-44.380Z_agent_copilot_gpt-5.6-luna_ea01174",
     "ranAt": "2026-08-29T20:37:44.380Z",
     "mode": "agent",
