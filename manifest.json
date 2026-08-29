@@ -1,5 +1,17 @@
 [
   {
+    "slug": "2026-08-29T20-31-22.076Z_agent_copilot_claude-haiku-4.5_ea01174",
+    "ranAt": "2026-08-29T20:31:22.076Z",
+    "mode": "agent",
+    "provider": "copilot",
+    "model": "claude-haiku-4.5",
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "commit": "ea01174",
+    "runUrl": "https://github.com/jonmodell/vitest-react-unit-testing/actions/runs/33273690016"
+  },
+  {
     "slug": "2026-08-29T20-31-03.044Z_agent_copilot_gpt-5.3-codex_ea01174",
     "ranAt": "2026-08-29T20:31:03.044Z",
     "mode": "agent",
