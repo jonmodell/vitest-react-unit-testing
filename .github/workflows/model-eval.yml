@@ -1,5 +1,9 @@
 name: model-eval
 
+# Show the chosen model in the Actions run list (e.g. "model-eval · gpt-5.3-codex · jonmodell")
+# instead of the generic workflow name. `inputs.model` is available at dispatch time.
+run-name: model-eval · ${{ inputs.model }} · ${{ github.actor }}
+
 # Produces tests with the GitHub Copilot CLI (agent mode), then grades them. This runs Copilot
 # under your account's allowance, so it is locked to you alone:
 #   - workflow_dispatch only (never on pull_request) — only accounts with write access can start it
